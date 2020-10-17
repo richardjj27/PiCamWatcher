@@ -1,17 +1,34 @@
 # http://thepythoncorner.com/dev/how-to-create-a-watchdog-in-python-to-look-for-filesystem-changes/
 # sudo apt install python3-pip
 # python3 -m pip install watchdog
-# 
+ 
+# Known Bugs and Issues
+#  Why does it take multiple ctrl-c clicks to exit?
+
+# Testing Required:
+#  Check data missed at file swapover.
+
 # Todo:
+#  Make it run as a service/startup - learn
+#  Add some more trigger files?  Perhaps take overriding attributes
+#  Clean up the code and make more pythony.
+#    Needs a bit of tweaking - video plays at full speed.
+#  An email stills every x seconds option
+#  A 'take instructions through email' option.  GMail API
+#  Create a log file.
+#  Put 'shutter' as a flag triggered every 10 seconds in the main program body.
 #  Tidy up imports - learn
-#  Put some file rotation login in
+
+# Done:
+#* Put some file rotation login in
 #*   if freespace < x, call the cleanup function 
 #*   while freespace is less than x:
 #*      delete the oldest file in video
 #*      needs to be made a bit resilient in the event of falling below low threshold
-#  Make it run as a service/startup - learn
+#* Add a snapshot jpg between every file change.
 #  Put parameters at the top of the script as contants
 #*   Paths
+#*   Retain files or watch free space.
 #*   Video length
 #*   Video resolution
 #*   Rotate
@@ -19,20 +36,10 @@
 #*   Timestamp
 #    Anything else?
 ##   Take snapshot
-#*   Retain files or watch free space.
-#  Check data missed at file swapover.
-#  Put on GitHub
-#    Exclude videos folder.
-#  Add some more trigger files?  Perhaps take overriding attributes
-#  Clean up the code and make more pythony.
+#* Put on GitHub
+#*   Exclude videos folder.
 #*  A '1 frame a second' security option
-#    Needs a bit of tweaking - video plays at full speed.
-#  An email stills every x seconds option
-#  A 'take instructions through email' option.  GMail API
-#  Why does it take multiple ctrl-c clicks to exit?
-#* Add a snapshot jpg between every file change.
-#  Create a log file.
-#  Put 'shutter' as a flag triggered every 10 seconds in the main program body.
+
 
 import time
 import threading
