@@ -40,9 +40,10 @@
 #* Put on GitHub
 #*   Exclude videos folder.
 #*  A '1 frame a second' security option
-#* Put 'shutter' as a flag triggered every [10] seconds in the main program body.
+#* Put 'shutter' as a flag triggered every 10 seconds in the main program body.
 #* Create a log file.
 #* Log Temperature.
+#* Added a 'SHUTTEREXISTS' constant in case there is not hardware shutter installed.
 
 import time
 import threading
@@ -75,6 +76,7 @@ TIMESTAMP = False
 ROTATION = 180
 FREESPACELIMIT = 16
 TAKESNAPSHOT = True
+SHUTTEREXISTS = True
 
 PAGE="""\
 <html>
@@ -343,7 +345,7 @@ if __name__ == "__main__":
 
             # Make sure the shutter is open every ten seconds.
             if(int(dt.datetime.now().strftime('%S')) % 10 == 0):
-                if(shutter_open is True):
+                if(shutter_open is True and SHUTTEREXISTS is True):
                     os.system("shutter 99 >/dev/null 2>&1")
                 else:
                     os.system("shutter 1 >/dev/null 2>&1")
