@@ -10,14 +10,17 @@
 
 # Todo:
 #  Make it run as a service/startup - learn
+#  Tidy up imports - learn
+#  Get global variables sorted out - learn
 #  Add some more trigger files?  Perhaps take overriding attributes
 #  Clean up the code and make more pythony.
 #    Needs a bit of tweaking - video plays at full speed.
 #  An email stills every x seconds option
 #  A 'take instructions through email' option.  GMail API
-#  Create a log file.
-#  Put 'shutter' as a flag triggered every 10 seconds in the main program body.
-#  Tidy up imports - learn
+#* Put 'shutter' as a flag triggered every [10] seconds in the main program body.
+#  Put parameters at the top of the script as constants
+#    Brightness
+#    Anything else?
 
 # Done:
 #* Put some file rotation login in
@@ -26,20 +29,19 @@
 #*      delete the oldest file in video
 #*      needs to be made a bit resilient in the event of falling below low threshold
 #* Add a snapshot jpg between every file change.
-#  Put parameters at the top of the script as contants
+#* Put parameters at the top of the script as constants
 #*   Paths
 #*   Retain files or watch free space.
 #*   Video length
 #*   Video resolution
 #*   Rotate
-#    Brightness
 #*   Timestamp
-#    Anything else?
 ##   Take snapshot
 #* Put on GitHub
 #*   Exclude videos folder.
 #*  A '1 frame a second' security option
-
+#* Put 'shutter' as a flag triggered every [10] seconds in the main program body.
+#* Create a log file.
 
 import time
 import threading
@@ -60,6 +62,7 @@ import shutil
 import fnmatch
 
 OUTPUTPATH = './video/'
+WATCHPATH = "./watch"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
@@ -94,10 +97,8 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
-
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
-
         if self.path == '/':
             self.send_response(301)
             self.send_header('Location', '/index.html')
@@ -134,11 +135,9 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
         else:
             self.send_error(404)
             self.end_headers()
-
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
-
 def CleanOldFiles():
     freespace = shutil.disk_usage(OUTPUTPATH).free / 1073741824
     if(freespace < FREESPACELIMIT):
@@ -146,10 +145,9 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATH), "RPiR-*.*")
             full_path = [OUTPUTPATH + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            print(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
+            logging.info(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
             os.remove(oldest_file)
             freespace = shutil.disk_usage(OUTPUTPATH).free / 1073741824
-
 def on_created(event):
     if "pi-record" in event.src_path:
         silentremove("./watch/pi-stream")
@@ -177,29 +175,17 @@ def on_created(event):
         silentremove("./watch/pi-stream")
         silentremove("./watch/pi-tlapse")
         silentremove("./watch/pi-stopall")
-
-# def on_deleted(event):
-#     if "pi-record" in event.src_path:
-#         # run the 'stop recording' function
-#         pass
-
-#     if "pi-stream" in event.src_path:
-#         # run the 'stop streaming' function
-#         pass
-
-# def on_modified(event):
-#     pass
-
 def silentremove(filename):
     try:
         time.sleep(.5)
         os.remove(filename)
     except:
         pass
-
-def picamstartrecord():    
+def picamstartrecord():
     global record_thread_status
-    os.system("shutter 99 >/dev/null 2>&1")
+    global shutter_open
+    logging.info("Open Shutter")
+    shutter_open = True
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     
@@ -219,27 +205,27 @@ def picamstartrecord():
     while record_thread_status is True:
         camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.start_recording(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264')
-        print(f"Recording: {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
+        logging.info(f"Recording: {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
         while record_thread_status is True and filetime <= VIDEOLENGTH:
             time.sleep(1)
-            if(filetime % 10 == 5):
-                os.system("shutter 99 >/dev/null 2>&1")
-                if(TAKESNAPSHOT is True):
-                    camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+            if(filetime % 10 == 5 and TAKESNAPSHOT is True):
+                logging.debug(f"Take snapshot {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
-
         time.sleep(.5) 
         camera.stop_recording()
-        
+    logging.info("Close Shutter")
     camera.close()
     time.sleep(1)
-    os.system("shutter 1 >/dev/null 2>&1")
-
+    
+    shutter_open = False
 def picamstartstream():
     global stream_thread_status
-    os.system("shutter 99 >/dev/null 2>&1")
+    global shutter_open
+    logging.info("Open Shutter")
+    shutter_open = True
     
     with picamera.PiCamera(resolution='320x240', framerate=12) as camera:
         global output
@@ -264,7 +250,8 @@ def picamstartstream():
             camera.stop_recording()
 
     time.sleep(1)
-    os.system("shutter 1 >/dev/null 2>&1")
+    logging.info("Close Shutter")
+    shutter_open = False
 
 if __name__ == "__main__":
     patterns = "*"
@@ -274,12 +261,9 @@ if __name__ == "__main__":
     my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
 
     my_event_handler.on_created = on_created
-    # my_event_handler.on_deleted = on_deleted
-    # my_event_handler.on_modified = on_modified
 
-    watch_path = "./watch"
     my_observer = Observer()
-    my_observer.schedule(my_event_handler, watch_path, recursive=False)
+    my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
     my_observer.start()
 
@@ -287,20 +271,30 @@ if __name__ == "__main__":
     record_thread_status = False
     global stream_thread_status
     stream_thread_status = False
+    global shutter_open
+    shutter_open = False
+    record_mode = "record"
+    
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger().addHandler(console)
     
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)
 
-    if(path.exists(watch_path + "/pi-record") == True and path.exists(watch_path + "/pi-stream") == True):
+    if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-stream") == True):
         silentremove("./watch/pi-stream")
 
-    if(path.exists(watch_path + "/pi-record") == True and path.exists(watch_path + "/pi-tlapse") == True):
+    if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-tlapse") == True):
         silentremove("./watch/pi-record")
 
-    if(path.exists(watch_path + "/pi-tlapse") == True and path.exists(watch_path + "/pi-stream") == True):
+    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True):
         silentremove("./watch/pi-stream")
 
-    if(path.exists(watch_path + "/pi-tlapse") == True and path.exists(watch_path + "/pi-stream") == True and path.exists(watch_path + "/pi-stream") == True):
+    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True and path.exists(WATCHPATH + "/pi-stream") == True):
         silentremove("./watch/pi-stream")
         silentremove("./watch/pi-record")
 
@@ -308,40 +302,45 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
 
-            if(path.exists(watch_path + "/pi-record") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
+            if(path.exists(WATCHPATH + "/pi-record") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 record_thread_status = True
                 record_mode = "record"
                 record_thread.start()
-                print(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
-            if(path.exists(watch_path + "/pi-tlapse") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
+            if(path.exists(WATCHPATH + "/pi-tlapse") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 record_thread_status = True
                 record_mode = "tlapse"
                 record_thread.start()
-                print(f"Start TLapse : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Start TLapse : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
-            elif(path.exists(watch_path + "/pi-stream") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
+            elif(path.exists(WATCHPATH + "/pi-stream") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 stream_thread_status = True
                 stream_thread.start()
-                print(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.info(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
-            elif(path.exists(watch_path + "/pi-record") == False and record_mode == "record" and record_thread.is_alive() is True):
+            elif(path.exists(WATCHPATH + "/pi-record") == False and record_mode == "record" and record_thread.is_alive() is True):
                 record_thread_status = False
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                print(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
-            elif(path.exists(watch_path + "/pi-tlapse") == False and record_mode == "tlapse" and record_thread.is_alive() is True):
+            elif(path.exists(WATCHPATH + "/pi-tlapse") == False and record_mode == "tlapse" and record_thread.is_alive() is True):
                 record_thread_status = False
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                print(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
-            elif(path.exists(watch_path + "/pi-stream") == False and stream_thread.is_alive() is True):
+            elif(path.exists(WATCHPATH + "/pi-stream") == False and stream_thread.is_alive() is True):
                 stream_thread_status = False
                 stream_thread.join()
                 stream_thread = threading.Thread(target = picamstartstream)
-                print(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+
+            if(shutter_open is True):
+                os.system("shutter 99 >/dev/null 2>&1")
+            else:
+                os.system("shutter 1 >/dev/null 2>&1")
 
     except KeyboardInterrupt:
         #record_thread.join()
