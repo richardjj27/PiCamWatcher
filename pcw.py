@@ -189,8 +189,9 @@ def silentremove(filename):
 def picamstartrecord():
     global record_thread_status
     global shutter_open
-    logging.info("Open Shutter")
-    shutter_open = True
+    if(SHUTTEREXISTS is True):
+        logging.info("Open Shutter")
+        shutter_open = True
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     
@@ -216,13 +217,15 @@ def picamstartrecord():
         while record_thread_status is True and filetime <= VIDEOLENGTH:
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
-            if(int(dt.datetime.now().strftime('%S')) % 60 == 0): and TAKESNAPSHOT is True):
+            if(int(dt.datetime.now().strftime('%S')) % 60 == 0 and TAKESNAPSHOT is True):
                 logging.debug(f"Take snapshot {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
-    logging.info("Close Shutter")
+    if(SHUTTEREXISTS is True):
+        logging.info("Close Shutter")
+        shutter_open = False
     camera.close()
     time.sleep(1)
     
@@ -230,8 +233,9 @@ def picamstartrecord():
 def picamstartstream():
     global stream_thread_status
     global shutter_open
-    logging.info("Open Shutter")
-    shutter_open = True
+    if(SHUTTEREXISTS is True):
+        logging.info("Open Shutter")
+        shutter_open = True
     
     with picamera.PiCamera(resolution='320x240', framerate=12) as camera:
         global output
@@ -256,8 +260,9 @@ def picamstartstream():
             camera.stop_recording()
 
     time.sleep(1)
-    logging.info("Close Shutter")
-    shutter_open = False
+    if(SHUTTEREXISTS is True):
+        logging.info("Close Shutter")
+        shutter_open = False
 
 if __name__ == "__main__":
     patterns = "*"
@@ -349,8 +354,10 @@ if __name__ == "__main__":
                     os.system("shutter 99 >/dev/null 2>&1")
                 else:
                     os.system("shutter 1 >/dev/null 2>&1")
-
-            logging.debug(f"Temperature = {CPUTemperature().temperature}C")
+            
+            # Log temperature every minute.
+            if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
+                logging.debug(f"Temperature = {CPUTemperature().temperature}C")
 
     except KeyboardInterrupt:
         #record_thread.join()

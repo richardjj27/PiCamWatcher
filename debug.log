@@ -1,22 +1,3 @@
-18-Oct-20 09:20:52 INFO     Open Shutter
-18-Oct-20 09:20:52 INFO     Start Record : <Thread(Thread-4, started 3018847328)>, True, True, 5
-18-Oct-20 09:20:52 DEBUG    Temperature = 53.556C
-18-Oct-20 09:20:53 INFO     Recording: ./video/RPiR-20201018-092053.h264
-18-Oct-20 09:20:53 DEBUG    Temperature = 54.53C
-18-Oct-20 09:20:54 DEBUG    Temperature = 55.991C
-18-Oct-20 09:20:55 DEBUG    Temperature = 56.478C
-18-Oct-20 09:20:56 DEBUG    Temperature = 56.965C
-18-Oct-20 09:20:57 DEBUG    Temperature = 56.478C
-18-Oct-20 09:20:58 DEBUG    Temperature = 56.965C
-18-Oct-20 09:20:59 DEBUG    Take snapshot ./video/RPiR-20201018-092059.jpg
-18-Oct-20 09:20:59 DEBUG    Temperature = 57.452C
-18-Oct-20 09:21:00 DEBUG    Temperature = 57.452C
-18-Oct-20 09:21:01 DEBUG    Temperature = 57.939C
-18-Oct-20 09:21:02 DEBUG    Temperature = 57.452C
-18-Oct-20 09:21:03 DEBUG    Temperature = 57.452C
-18-Oct-20 09:21:04 DEBUG    Temperature = 56.478C
-18-Oct-20 09:21:06 DEBUG    Temperature = 57.452C
-18-Oct-20 09:21:07 DEBUG    Temperature = 57.939C
-18-Oct-20 09:21:08 DEBUG    Temperature = 56.965C
-18-Oct-20 09:21:09 DEBUG    Temperature = 57.939C
-18-Oct-20 09:21:09 DEBUG    Take snapshot ./video/RPiR-20201018-092109.jpg
+18-Oct-20 10:23:48 INFO     Start Record : <Thread(Thread-4, started 3018847328)>, True, True, 5
+18-Oct-20 10:23:48 INFO     Recording: ./video/RPiR-20201018-102348.h264
+18-Oct-20 10:24:00 DEBUG    Take snapshot ./video/RPiR-20201018-102400.jpg
