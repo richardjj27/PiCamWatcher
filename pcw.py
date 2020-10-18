@@ -6,18 +6,18 @@
 #  Why does it take multiple ctrl-c clicks to exit?
 
 # Testing Required:
-#  Check data missed at file swapover.
+#  Check if any data is missed at file swapover and jpg snapshot time.
 
 # Todo:
 #  Make it run as a service/startup - learn
 #  Tidy up imports - learn
 #  Get global variables sorted out - learn
+#  Clean up the code and make more pythony - learn.
 #  Add some more trigger files?  Perhaps take overriding attributes
-#  Clean up the code and make more pythony.
-#    Needs a bit of tweaking - video plays at full speed.
+#    Reboot Pi
+#  1 second security option needs a bit of tweaking - video plays at full speed.
 #  An email stills every x seconds option
 #  A 'take instructions through email' option.  GMail API
-#* Put 'shutter' as a flag triggered every [10] seconds in the main program body.
 #  Put parameters at the top of the script as constants
 #    Brightness
 #    Anything else?
@@ -42,6 +42,7 @@
 #*  A '1 frame a second' security option
 #* Put 'shutter' as a flag triggered every [10] seconds in the main program body.
 #* Create a log file.
+#* Log Temperature.
 
 import time
 import threading
@@ -60,12 +61,14 @@ from http import server
 import datetime as dt
 import shutil
 import fnmatch
+from gpiozero import CPUTemperature
 
 OUTPUTPATH = './video/'
 WATCHPATH = "./watch"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
+QUALITY = 1
 VIDEOLENGTH = 300
 STREAMPORT = 42687
 TIMESTAMP = False
@@ -204,13 +207,14 @@ def picamstartrecord():
     
     while record_thread_status is True:
         camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-        camera.start_recording(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264')
+        camera.start_recording(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
         while record_thread_status is True and filetime <= VIDEOLENGTH:
             time.sleep(1)
-            if(filetime % 10 == 5 and TAKESNAPSHOT is True):
+            # Take a snapshot jpg every minute(ish)
+            if(int(dt.datetime.now().strftime('%S')) % 60 == 0): and TAKESNAPSHOT is True):
                 logging.debug(f"Take snapshot {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
@@ -275,7 +279,7 @@ if __name__ == "__main__":
     shutter_open = False
     record_mode = "record"
     
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
@@ -337,10 +341,14 @@ if __name__ == "__main__":
                 stream_thread = threading.Thread(target = picamstartstream)
                 logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
-            if(shutter_open is True):
-                os.system("shutter 99 >/dev/null 2>&1")
-            else:
-                os.system("shutter 1 >/dev/null 2>&1")
+            # Make sure the shutter is open every ten seconds.
+            if(int(dt.datetime.now().strftime('%S')) % 10 == 0):
+                if(shutter_open is True):
+                    os.system("shutter 99 >/dev/null 2>&1")
+                else:
+                    os.system("shutter 1 >/dev/null 2>&1")
+
+            logging.debug(f"Temperature = {CPUTemperature().temperature}C")
 
     except KeyboardInterrupt:
         #record_thread.join()
