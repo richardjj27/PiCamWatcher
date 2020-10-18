@@ -22,6 +22,7 @@
 #    Brightness
 #    Anything else?
 #  Move the web session stuff to logging. 
+#  Create pi-exit trigger
 
 # Done:
 #* Put some file rotation login in
@@ -46,8 +47,10 @@
 #* Log Temperature.
 #* Added a 'SHUTTEREXISTS' constant in case there is not hardware shutter installed.
 #* Log constants to debug
+# * Create pi-exit trigger
 
 import time
+import sys
 import threading
 from threading import Condition
 from watchdog.observers import Observer
@@ -315,23 +318,31 @@ if __name__ == "__main__":
     stream_thread = threading.Thread(target = picamstartstream)
 
     if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-stream") == True):
-        silentremove("./watch/pi-stream")
+        silentremove(WATCHPATH + "/pi-stream")
 
     if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-tlapse") == True):
-        silentremove("./watch/pi-record")
+        silentremove(WATCHPATH + "/pi-record")
 
     if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True):
-        silentremove("./watch/pi-stream")
+        silentremove(WATCHPATH + "/pi-stream")
 
-    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True and path.exists(WATCHPATH + "/pi-stream") == True):
-        silentremove("./watch/pi-stream")
-        silentremove("./watch/pi-record")
+    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True and path.exists(WATCHPATH + "/pi-record") == True):
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-record")
 
     try:
         while True:
             time.sleep(1)
 
-            if(path.exists(WATCHPATH + "/pi-record") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
+            if(path.exists(WATCHPATH + "/pi-stop") is True):
+                logging.info("quit")
+                silentremove(WATCHPATH + "/pi-stop")
+                #exit()
+                os._exit(1)
+                #quit()
+                #quit()
+
+            if(path.exists(WATCHPATH + "/pi-record") is True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 record_thread_status = True
                 record_mode = "record"
                 record_thread.start()
