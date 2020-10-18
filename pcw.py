@@ -14,15 +14,14 @@
 #  Get global variables sorted out - learn
 #  Clean up the code and make more pythony - learn.
 #  Add some more trigger files?  Perhaps take overriding attributes
-#    Reboot Pi
+#    Have a think...
 #  1 second security option needs a bit of tweaking - video plays at full speed.
-#  An email stills every x seconds option
-#  A 'take instructions through email' option.  GMail API
 #  Put parameters at the top of the script as constants
 #    Brightness
 #    Anything else?
-#  Move the web session stuff to logging. 
-#  Create pi-exit trigger
+#  Move the web session stuff to logging.
+#  An email stills every x seconds option
+#  A 'take instructions through email' option.  GMail API
 
 # Done:
 #* Put some file rotation login in
@@ -43,14 +42,16 @@
 #*   Exclude videos folder.
 #*  A '1 frame a second' security option
 #* Put 'shutter' as a flag triggered every 10 seconds in the main program body.
+#* Add some more trigger files?  Perhaps take overriding attributes
+#*   Reboot Pi
 #* Create a log file.
 #* Log Temperature.
 #* Added a 'SHUTTEREXISTS' constant in case there is not hardware shutter installed.
 #* Log constants to debug
-# * Create pi-exit trigger
+#* Create pi-exit trigger
+#* Move the web session stuff to logging.
 
 import time
-import sys
 import threading
 from threading import Condition
 from watchdog.observers import Observer
@@ -139,12 +140,15 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(frame)
                     self.wfile.write(b'\r\n')
             except Exception as e:
-                logging.warning(
+                logging.debug(
                     'Removed streaming client %s: %s',
                     self.client_address, str(e))
         else:
             self.send_error(404)
             self.end_headers()
+    def log_message(self, format, *args):
+        logging.debug(f"{self.client_address[0]} {self.requestline}")
+        return
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
@@ -253,7 +257,7 @@ def picamstartstream():
             server = StreamingServer(address, StreamingHandler)
             threadstream = threading.Thread(target = server.serve_forever)
             threadstream.daemon = True
-            logging.info(f"Start Streaming on port {STREAMPORT}")
+            logging.info(f"Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while stream_thread_status is True:
                 time.sleep(1)
@@ -302,7 +306,7 @@ if __name__ == "__main__":
 
     logging.debug(f"OUTPUTPATH = {OUTPUTPATH}")
     logging.debug(f"WATCHPATH = {WATCHPATH}")
-    logging.debug(f"RESOLUTIONX {RESOLUTIONX}")
+    logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
     logging.debug(f"FRAMEPS = {FRAMEPS}")
     logging.debug(f"QUALITY = {QUALITY}")
@@ -335,12 +339,14 @@ if __name__ == "__main__":
             time.sleep(1)
 
             if(path.exists(WATCHPATH + "/pi-stop") is True):
-                logging.info("quit")
+                logging.info("Force Quit Instruction ")
                 silentremove(WATCHPATH + "/pi-stop")
-                #exit()
                 os._exit(1)
-                #quit()
-                #quit()
+
+            if(path.exists(WATCHPATH + "/pi-reboot") is True):
+                logging.info("Force Reboot Instruction ")
+                silentremove(WATCHPATH + "/pi-reboot")
+                os.system("sudo reboot now >/dev/null 2>&1")    
 
             if(path.exists(WATCHPATH + "/pi-record") is True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 record_thread_status = True
