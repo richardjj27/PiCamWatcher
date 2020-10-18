@@ -21,6 +21,7 @@
 #  Put parameters at the top of the script as constants
 #    Brightness
 #    Anything else?
+#  Move the web session stuff to logging. 
 
 # Done:
 #* Put some file rotation login in
@@ -44,6 +45,7 @@
 #* Create a log file.
 #* Log Temperature.
 #* Added a 'SHUTTEREXISTS' constant in case there is not hardware shutter installed.
+#* Log constants to debug
 
 import time
 import threading
@@ -81,7 +83,7 @@ SHUTTEREXISTS = True
 PAGE="""\
 <html>
 <body>
-<center><img src="stream.mjpg" width="320" height="240"></center>
+<center><img src="stream.mjpg" width="640" height="480"></center>
 </body>
 </html>
 """
@@ -237,21 +239,23 @@ def picamstartstream():
         logging.info("Open Shutter")
         shutter_open = True
     
-    with picamera.PiCamera(resolution='320x240', framerate=12) as camera:
+    with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
         output = StreamingOutput()
         #Uncomment the next line to change your Pi's Camera rotation (in degrees)
         camera.rotation = ROTATION
-        camera.start_recording(output, format='mjpeg')
+        camera.start_recording(output, format='mjpeg', quality=40)
         try:
             address = ('', STREAMPORT)
             server = StreamingServer(address, StreamingHandler)
-            threadxxx = threading.Thread(target = server.serve_forever)
-            threadxxx.daemon = True
-            threadxxx.start()
+            threadstream = threading.Thread(target = server.serve_forever)
+            threadstream.daemon = True
+            logging.info(f"Start Streaming on port {STREAMPORT}")
+            threadstream.start()
             while stream_thread_status is True:
                 time.sleep(1)
             server.shutdown()
+            logging.info("Stop Streaming")
             #camera.stop_recording()
         except KeyboardInterrupt:
             pass
@@ -292,6 +296,20 @@ if __name__ == "__main__":
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
+
+    logging.debug(f"OUTPUTPATH = {OUTPUTPATH}")
+    logging.debug(f"WATCHPATH = {WATCHPATH}")
+    logging.debug(f"RESOLUTIONX {RESOLUTIONX}")
+    logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
+    logging.debug(f"FRAMEPS = {FRAMEPS}")
+    logging.debug(f"QUALITY = {QUALITY}")
+    logging.debug(f"VIDEOLENGTH = {VIDEOLENGTH}")
+    logging.debug(f"STREAMPORT = {STREAMPORT}")
+    logging.debug(f"TIMESTAMP = {TIMESTAMP}")
+    logging.debug(f"ROTATION = {ROTATION}")
+    logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}")
+    logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
+    logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
     
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)
@@ -317,36 +335,36 @@ if __name__ == "__main__":
                 record_thread_status = True
                 record_mode = "record"
                 record_thread.start()
-                logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.debug(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             if(path.exists(WATCHPATH + "/pi-tlapse") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 record_thread_status = True
                 record_mode = "tlapse"
                 record_thread.start()
-                logging.info(f"Start TLapse : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.debug(f"Start TLapse : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-stream") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False):
                 stream_thread_status = True
                 stream_thread.start()
-                logging.info(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.debug(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-record") == False and record_mode == "record" and record_thread.is_alive() is True):
                 record_thread_status = False
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.debug(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-tlapse") == False and record_mode == "tlapse" and record_thread.is_alive() is True):
                 record_thread_status = False
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.debug(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-stream") == False and stream_thread.is_alive() is True):
                 stream_thread_status = False
                 stream_thread.join()
                 stream_thread = threading.Thread(target = picamstartstream)
-                logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.debug(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
             # Make sure the shutter is open every ten seconds.
             if(int(dt.datetime.now().strftime('%S')) % 10 == 0):

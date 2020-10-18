@@ -1,3 +1,18 @@
-18-Oct-20 10:23:48 INFO     Start Record : <Thread(Thread-4, started 3018847328)>, True, True, 5
-18-Oct-20 10:23:48 INFO     Recording: ./video/RPiR-20201018-102348.h264
-18-Oct-20 10:24:00 DEBUG    Take snapshot ./video/RPiR-20201018-102400.jpg
+18-Oct-20 10:39:53 DEBUG    OUTPUTPATH = ./video/
+18-Oct-20 10:39:53 DEBUG    WATCHPATH = ./watch
+18-Oct-20 10:39:53 DEBUG    RESOLUTIONX 1600
+18-Oct-20 10:39:53 DEBUG    RESOLUTIONY = 1200
+18-Oct-20 10:39:53 DEBUG    FRAMEPS = 30
+18-Oct-20 10:39:53 DEBUG    QUALITY = 1
+18-Oct-20 10:39:53 DEBUG    VIDEOLENGTH = 300
+18-Oct-20 10:39:53 DEBUG    STREAMPORT = 42687
+18-Oct-20 10:39:53 DEBUG    TIMESTAMP = False
+18-Oct-20 10:39:53 DEBUG    ROTATION = 180
+18-Oct-20 10:39:53 DEBUG    FREESPACELIMIT = 16
+18-Oct-20 10:39:53 DEBUG    TAKESNAPSHOT = True
+18-Oct-20 10:39:53 DEBUG    SHUTTEREXISTS = True
+18-Oct-20 10:39:54 INFO     Open Shutter
+18-Oct-20 10:39:54 DEBUG    Start Stream : <Thread(Thread-5, started 3017798752)>, True, True, 5
+18-Oct-20 10:39:54 INFO     Start Streaming on port 42687
+18-Oct-20 10:40:00 DEBUG    Temperature = 54.53C
+18-Oct-20 10:40:10 WARNING  Removed streaming client ('192.168.192.223', 58856): [Errno 32] Broken pipe
