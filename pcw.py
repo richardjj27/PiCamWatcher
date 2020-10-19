@@ -71,19 +71,19 @@ import fnmatch
 from gpiozero import CPUTemperature
 
 OUTPUTPATH = './video/'
-WATCHPATH = "./watch"
+WATCHPATH = "./watch/"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
-QUALITY = 1
-VIDEOLENGTH = 300
-TIMELAPSEPERIOD = 5
+QUALITY = 1 # 1 is best, 40 is worst.
+VIDEOLENGTH = 300 # Recorded videos will rotate at this number of seconds.
+TIMELAPSEPERIOD = 60 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
-TIMESTAMP = True
-ROTATION = 180
-FREESPACELIMIT = 16
-TAKESNAPSHOT = True
-SHUTTEREXISTS = True
+TIMESTAMP = True # Will a timestamp be put on photos and videos?
+ROTATION = 180 # Degrees of rotation to orient camera correctly.
+FREESPACELIMIT = 16 # At how many GB should old videos be deleted.  Timelapse JPGs will be ignored.
+TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
+SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
 PAGE="""\
 <html>
@@ -165,31 +165,31 @@ def CleanOldFiles():
             freespace = shutil.disk_usage(OUTPUTPATH).free / 1073741824
 def on_created(event):
     if "pi-record" in event.src_path:
-        silentremove("./watch/pi-stream")
-        silentremove("./watch/pi-tlapse")
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-tlapse")
     elif "pi-stoprecord" in event.src_path:
         silentremove(event.src_path)
-        silentremove("./watch/pi-record")
+        silentremove(WATCHPATH + "/pi-record")
 
     if "pi-tlapse" in event.src_path:
-        silentremove("./watch/pi-stream")
-        silentremove("./watch/pi-record")
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-record")
     elif "pi-stoptlapse" in event.src_path:
         silentremove(event.src_path)
-        silentremove("./watch/pi-tlapse")
+        silentremove(WATCHPATH + "//pi-tlapse")
 
     if "pi-stream" in event.src_path:
-        silentremove("./watch/pi-record")
-        silentremove("./watch/pi-tlapse")
+        silentremove(WATCHPATH + "/pi-record")
+        silentremove(WATCHPATH + "/pi-tlapse")
     elif "pi-stopstream" in event.src_path:
         silentremove(event.src_path)
-        silentremove("./watch/pi-stream")
+        silentremove(WATCHPATH + "/pi-stream")
 
     if "pi-stopall" in event.src_path:
-        silentremove("./watch/pi-record")
-        silentremove("./watch/pi-stream")
-        silentremove("./watch/pi-tlapse")
-        silentremove("./watch/pi-stopall")
+        silentremove(WATCHPATH + "/pi-record")
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-tlapse")
+        silentremove(WATCHPATH + "/pi-stopall")
 def silentremove(filename):
     try:
         time.sleep(.5)
@@ -221,7 +221,7 @@ def picamstartrecord():
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
             if(int(dt.datetime.now().strftime('%S')) % 60 == 0 and TAKESNAPSHOT is True):
-                logging.debug(f"Take snapshot {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                logging.debug(f"Take Snapshot Image : {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
         time.sleep(.5) 
@@ -231,7 +231,6 @@ def picamstartrecord():
         shutter_open = False
     camera.close()
     time.sleep(1)
-
 def picamstarttlapse():
     global tlapse_thread_status
     global shutter_open
@@ -239,7 +238,7 @@ def picamstarttlapse():
         logging.info("Open Shutter")
         shutter_open = True
     camera = PiCamera()
-    camera.resolution = (1920, 1080)
+    camera.resolution = (1600, 1200)
     camera.rotation = ROTATION
     videoprefix = "RPiT-"
 
@@ -248,7 +247,7 @@ def picamstarttlapse():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        logging.info(f"Take Timelapse Image {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        logging.info(f"Take Timelapse Image : {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         time.sleep(TIMELAPSEPERIOD)
 
@@ -257,7 +256,6 @@ def picamstarttlapse():
         shutter_open = False
     camera.close()
     time.sleep(1)
-
 def picamstartstream():
     global stream_thread_status
     global shutter_open
@@ -300,12 +298,9 @@ if __name__ == "__main__":
     ignore_directories = True
     case_sensitive = False
     my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-
     my_event_handler.on_created = on_created
-
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
-
     my_observer.start()
 
     global record_thread_status
@@ -331,6 +326,7 @@ if __name__ == "__main__":
     logging.debug(f"FRAMEPS = {FRAMEPS}")
     logging.debug(f"QUALITY = {QUALITY}")
     logging.debug(f"VIDEOLENGTH = {VIDEOLENGTH}")
+    logging.debug(f"TIMELAPSEPERIOD = {TIMELAPSEPERIOD}")
     logging.debug(f"STREAMPORT = {STREAMPORT}")
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
     logging.debug(f"ROTATION = {ROTATION}")
@@ -373,35 +369,35 @@ if __name__ == "__main__":
             if(path.exists(WATCHPATH + "/pi-record") is True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
                 record_thread_status = True
                 record_thread.start()
-                logging.debug(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             if(path.exists(WATCHPATH + "/pi-tlapse") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
                 tlapse_thread_status = True
                 tlapse_thread.start()
-                logging.debug(f"Start Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
+                logging.info(f"Start Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-stream") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
                 stream_thread_status = True
                 stream_thread.start()
-                logging.debug(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.info(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-record") == False and record_thread.is_alive() is True):
                 record_thread_status = False
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                logging.debug(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-tlapse") == False and  tlapse_thread.is_alive() is True):
                 tlapse_thread_status = False
                 tlapse_thread.join()
                 tlapse_thread = threading.Thread(target = picamstartrecord)
-                logging.debug(f"Stop Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
 
             elif(path.exists(WATCHPATH + "/pi-stream") == False and stream_thread.is_alive() is True):
                 stream_thread_status = False
                 stream_thread.join()
                 stream_thread = threading.Thread(target = picamstartstream)
-                logging.debug(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
+                logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
             # Make sure the shutter is open every ten seconds.
             if(int(dt.datetime.now().strftime('%S')) % 10 == 0):
