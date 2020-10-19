@@ -17,10 +17,11 @@
 #    Have a think...
 #* Change the timelapse option to take JPGs instead.
 #  Put parameters at the top of the script as constants
-#    Brightness
-#    Anything else?
-#  An email stills every x seconds option
+#    AWB?   
+#    ????
+#  An email still image sent every x seconds option
 #  A 'take instructions through email' option.  GMail API
+#  Setting framerate to something other than 30 gets weird results.
 
 # Done:
 #* Put some file rotation login in
@@ -35,6 +36,7 @@
 #*   Video length
 #*   Video resolution
 #*   Rotate
+#*    Brightness
 #*   Timestamp
 ##   Take snapshot
 #* Put on GitHub
@@ -75,13 +77,15 @@ WATCHPATH = "./watch/"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
-QUALITY = 1 # 1 is best, 40 is worst.
+QUALITY = 20 # 1 is best, 40 is worst.
 VIDEOLENGTH = 300 # Recorded videos will rotate at this number of seconds.
 TIMELAPSEPERIOD = 60 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
 TIMESTAMP = True # Will a timestamp be put on photos and videos?
-ROTATION = 180 # Degrees of rotation to orient camera correctly.
-FREESPACELIMIT = 16 # At how many GB should old videos be deleted.  Timelapse JPGs will be ignored.
+ROTATION = 270 # Degrees of rotation to orient camera correctly.
+BRIGHTNESS = 50
+CONTRAST = 0
+FREESPACELIMIT = 96 # At how many GB should old videos be deleted.  Timelapse JPGs will be ignored.
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
@@ -205,6 +209,8 @@ def picamstartrecord():
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
+    camera.brightness = BRIGHTNESS
+    camera.contrast = CONTRAST
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
@@ -212,15 +218,17 @@ def picamstartrecord():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.start_recording(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
         while record_thread_status is True and filetime <= VIDEOLENGTH:
+            if(TAKESNAPSHOT is True):
+                camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                camera.annotate_background = picamera.Color('black')
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
-            if(int(dt.datetime.now().strftime('%S')) % 60 == 0 and TAKESNAPSHOT is True):
+            if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
                 logging.debug(f"Take Snapshot Image : {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
@@ -240,6 +248,8 @@ def picamstarttlapse():
     camera = PiCamera()
     camera.resolution = (1600, 1200)
     camera.rotation = ROTATION
+    camera.brightness = BRIGHTNESS
+    camera.contrast = CONTRAST
     videoprefix = "RPiT-"
 
     while tlapse_thread_status is True:
@@ -268,6 +278,8 @@ def picamstartstream():
         output = StreamingOutput()
         #Uncomment the next line to change your Pi's Camera rotation (in degrees)
         camera.rotation = ROTATION
+        camera.brightness = BRIGHTNESS
+        camera.contrast = CONTRAST
         camera.start_recording(output, format='mjpeg', quality=40)
         try:
             address = ('', STREAMPORT)
@@ -277,6 +289,9 @@ def picamstartstream():
             logging.info(f"Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while stream_thread_status is True:
+                if(TIMESTAMP is True):
+                    camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    camera.annotate_background = picamera.Color('black')
                 time.sleep(1)
             server.shutdown()
             logging.info("Stop Streaming")
@@ -330,6 +345,8 @@ if __name__ == "__main__":
     logging.debug(f"STREAMPORT = {STREAMPORT}")
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
     logging.debug(f"ROTATION = {ROTATION}")
+    logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
+    logging.debug(f"CONTRAST = {CONTRAST}")
     logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
@@ -337,7 +354,6 @@ if __name__ == "__main__":
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)          
     tlapse_thread = threading.Thread(target = picamstarttlapse)
-
 
     if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-stream") == True):
         silentremove(WATCHPATH + "/pi-stream")
@@ -400,14 +416,14 @@ if __name__ == "__main__":
                 logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
 
             # Make sure the shutter is open every ten seconds.
-            if(int(dt.datetime.now().strftime('%S')) % 10 == 0):
+            if(int(dt.datetime.now().strftime('%S')) % 10 == 3):
                 if(shutter_open is True and SHUTTEREXISTS is True):
                     os.system("shutter 99 >/dev/null 2>&1")
                 else:
                     os.system("shutter 1 >/dev/null 2>&1")
             
             # Log temperature every minute.
-            if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
+            if(int(dt.datetime.now().strftime('%S')) % 60 == 15):
                 logging.debug(f"Temperature = {CPUTemperature().temperature}C")
 
     except KeyboardInterrupt:
