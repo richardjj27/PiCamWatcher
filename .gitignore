@@ -1,3 +1,6 @@
-video
+video/*
+watch/*
+!video/.gitkeep 
+!watch/.gitkeep 
 debug.log
 test.py
