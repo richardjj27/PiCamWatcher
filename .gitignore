@@ -1,4 +1,4 @@
-video/*
+output/*
 watch/*
 !video/.gitkeep 
 !watch/.gitkeep 

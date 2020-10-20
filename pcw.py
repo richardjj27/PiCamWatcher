@@ -52,6 +52,7 @@
 #* Create pi-exit trigger
 #* Move the web session stuff to logging.
 #* Change the timelapse option to take JPGs instead.
+#* Split Video and Image output folders.
 
 import time
 import threading
@@ -72,12 +73,13 @@ import shutil
 import fnmatch
 from gpiozero import CPUTemperature
 
-OUTPUTPATH = './video/'
+OUTPUTPATHVIDEO = './output/video/'
+OUTPUTPATHIMAGE = './output/image/'
 WATCHPATH = "./watch/"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
-QUALITY = 20 # 1 is best, 40 is worst.
+QUALITY = 20 # 1 is best, 40 is worst.``
 VIDEOLENGTH = 300 # Recorded videos will rotate at this number of seconds.
 TIMELAPSEPERIOD = 60 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
@@ -158,15 +160,15 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 def CleanOldFiles():
-    freespace = shutil.disk_usage(OUTPUTPATH).free / 1073741824
+    freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
     if(freespace < FREESPACELIMIT):
         while (freespace < FREESPACELIMIT):
-            list_of_files = fnmatch.filter(os.listdir(OUTPUTPATH), "RPiR-*.*")
-            full_path = [OUTPUTPATH + "{0}".format(x) for x in list_of_files]
+            list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
+            full_path = [OUTPUTPATHVIDEO + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             logging.info(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
             os.remove(oldest_file)
-            freespace = shutil.disk_usage(OUTPUTPATH).free / 1073741824
+            freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
 def on_created(event):
     if "pi-record" in event.src_path:
         silentremove(WATCHPATH + "/pi-stream")
@@ -218,8 +220,8 @@ def picamstartrecord():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        camera.start_recording(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
+        camera.start_recording(OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
+        logging.info(f"Recording: {OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
         while record_thread_status is True and filetime <= VIDEOLENGTH:
@@ -229,8 +231,8 @@ def picamstartrecord():
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
             if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
-                logging.debug(f"Take Snapshot Image : {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-                camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+                logging.debug(f"Take Snapshot Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
@@ -257,8 +259,8 @@ def picamstarttlapse():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        logging.info(f"Take Timelapse Image : {OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        camera.capture(OUTPUTPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+        logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         time.sleep(TIMELAPSEPERIOD)
 
     if(SHUTTEREXISTS is True):
@@ -334,7 +336,8 @@ if __name__ == "__main__":
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-    logging.debug(f"OUTPUTPATH = {OUTPUTPATH}")
+    logging.debug(f"OUTPUTPATHVIDEO = {OUTPUTPATHVIDEO}")
+    logging.debug(f"OUTPUTPATHIMAGE = {OUTPUTPATHIMAGE}")
     logging.debug(f"WATCHPATH = {WATCHPATH}")
     logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
