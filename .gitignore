@@ -1,8 +1,4 @@
-output/image/*
-output/video/*
-watch/*
-!output/image/.gitkeep 
-!output/video/.gitkeep 
-!watch/.gitkeep 
+sync/*
+video/*
 debug.log
 test.py

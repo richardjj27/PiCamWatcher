@@ -22,6 +22,7 @@
 #  An email still image sent every x seconds option
 #  A 'take instructions through email' option.  GMail API
 #  Setting framerate to something other than 30 gets weird results.
+#  As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
 
 # Done:
 #* Put some file rotation login in
