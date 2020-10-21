@@ -19,6 +19,8 @@
 #    AWB?   
 #    ????
 #  Setting framerate to something other than 30 gets weird results.
+#  Do some basic checks.
+#  Add a 'script started' logging event.
 
 # Done:
 #* Put some file rotation login in
@@ -51,6 +53,7 @@
 #* Split Video and Image output folders.
 #* Change the timelapse option to take JPGs instead.
 #* As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
+
 
 import time
 import threading
@@ -89,6 +92,24 @@ FREESPACELIMIT = 96 # At how many GB free should old videos be deleted.  Timelap
 IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
+
+# FLAGS         0000000001   
+# PI-RECORD     0000000010  
+# PI-STREAM     0000000100  
+# PI-TLAPSE     0000001000  
+# PI-STOPRECORD 0000010000  
+# PI-STOPSTREAM 0000100000  
+# PI-STOPTLAPSE 0001000000  
+# PI-STOPALL    0010000000  
+# PI-STOPSCRIPT 0100000000     
+# PI-REBOOT     1000000000  
+
+# PROCESSES
+# Idle          0000000000
+# Recording     0000000001
+# Streaming     0000000010
+# Timelapsing   0000000011
+# 
 
 PAGE="""\
 <html>
@@ -166,18 +187,18 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
             full_path = [OUTPUTPATHVIDEO + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.info(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
+            logging.debug(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
             os.remove(oldest_file)
             freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
+    
     # clean image files (based on folder size)
-
     imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
     if(imageusedspace > IMAGEFOLDERLIMIT):
         while (imageusedspace > IMAGEFOLDERLIMIT):
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHIMAGE), "RPi*.*")
             full_path = [OUTPUTPATHIMAGE + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.info(f"Deleting: {oldest_file}   Used Space: {int(imageusedspace)}MB")
+            logging.debug(f"Deleting: {oldest_file}   Used Space: {int(imageusedspace)}MB")
             os.remove(oldest_file)
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
 
