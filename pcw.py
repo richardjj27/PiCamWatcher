@@ -15,14 +15,10 @@
 #  Clean up the code and make more pythony - learn.
 #  Add some more trigger files?  Perhaps take overriding attributes
 #    Have a think...
-#* Change the timelapse option to take JPGs instead.
 #  Put parameters at the top of the script as constants
 #    AWB?   
 #    ????
-#  An email still image sent every x seconds option
-#  A 'take instructions through email' option.  GMail API
 #  Setting framerate to something other than 30 gets weird results.
-#  As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
 
 # Done:
 #* Put some file rotation login in
@@ -39,7 +35,7 @@
 #*   Rotate
 #*    Brightness
 #*   Timestamp
-##   Take snapshot
+#*   Take snapshot
 #* Put on GitHub
 #*   Exclude videos folder.
 #*  A '1 frame a second' security option
@@ -52,8 +48,9 @@
 #* Log constants to debug
 #* Create pi-exit trigger
 #* Move the web session stuff to logging.
-#* Change the timelapse option to take JPGs instead.
 #* Split Video and Image output folders.
+#* Change the timelapse option to take JPGs instead.
+#* As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
 
 import time
 import threading
@@ -74,9 +71,9 @@ import shutil
 import fnmatch
 from gpiozero import CPUTemperature
 
-OUTPUTPATHVIDEO = './output/video/'
-OUTPUTPATHIMAGE = './output/image/'
-WATCHPATH = "./watch/"
+OUTPUTPATHVIDEO = "./video/"
+OUTPUTPATHIMAGE = "./sync/PiCamWatcher/image/"
+WATCHPATH = "./sync/PiCamWatcher/watch/"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
@@ -88,7 +85,8 @@ TIMESTAMP = True # Will a timestamp be put on photos and videos?
 ROTATION = 270 # Degrees of rotation to orient camera correctly.
 BRIGHTNESS = 50
 CONTRAST = 0
-FREESPACELIMIT = 96 # At how many GB should old videos be deleted.  Timelapse JPGs will be ignored.
+FREESPACELIMIT = 96 # At how many GB free should old videos be deleted.  Timelapse JPGs will be ignored.
+IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
@@ -162,6 +160,7 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     daemon_threads = True
 def CleanOldFiles():
     freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
+    # clean video files (based on free space)
     if(freespace < FREESPACELIMIT):
         while (freespace < FREESPACELIMIT):
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
@@ -170,6 +169,18 @@ def CleanOldFiles():
             logging.info(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
             os.remove(oldest_file)
             freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
+    # clean image files (based on folder size)
+
+    imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
+    if(imageusedspace > IMAGEFOLDERLIMIT):
+        while (imageusedspace > IMAGEFOLDERLIMIT):
+            list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHIMAGE), "RPi*.*")
+            full_path = [OUTPUTPATHIMAGE + "{0}".format(x) for x in list_of_files]
+            oldest_file = min(full_path, key=os.path.getctime)
+            logging.info(f"Deleting: {oldest_file}   Used Space: {int(imageusedspace)}MB")
+            os.remove(oldest_file)
+            imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
+
 def on_created(event):
     if "pi-record" in event.src_path:
         silentremove(WATCHPATH + "/pi-stream")
@@ -249,7 +260,7 @@ def picamstarttlapse():
         logging.info("Open Shutter")
         shutter_open = True
     camera = PiCamera()
-    camera.resolution = (1600, 1200)
+    camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
     camera.brightness = BRIGHTNESS
     camera.contrast = CONTRAST
@@ -351,7 +362,8 @@ if __name__ == "__main__":
     logging.debug(f"ROTATION = {ROTATION}")
     logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
     logging.debug(f"CONTRAST = {CONTRAST}")
-    logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}")
+    logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}GB")
+    logging.debug(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
     
@@ -376,9 +388,9 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
 
-            if(path.exists(WATCHPATH + "/pi-stop") is True):
-                logging.info("Force Quit Instruction ")
-                silentremove(WATCHPATH + "/pi-stop")
+            if(path.exists(WATCHPATH + "/pi-stopscript") is True):
+                logging.info("Force Quit Script Instruction ")
+                silentremove(WATCHPATH + "/pi-stopscript")
                 os._exit(1)
 
             if(path.exists(WATCHPATH + "/pi-reboot") is True):
