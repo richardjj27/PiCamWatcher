@@ -103,7 +103,6 @@ SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 # PI-STOPALL    0001000000
 # PI-STOPSCRIPT 0010000000
 # PI-REBOOT     0100000000
-# ShutterOpen   1000000000
 
 # process_flag  9876543210
 # Idle          0000000000
@@ -254,6 +253,7 @@ def toggleBit(int_type, offset):
     return(int_type ^ mask)
 
 def on_created(event):
+    global trigger_flag
     if "pi-record" in event.src_path:
         trigger_flag = setBit(trigger_flag, 0)
     if "pi-stream" in event.src_path:
@@ -286,12 +286,13 @@ def on_created(event):
         silentremove(event.src_path)
 
 def on_deleted(event):
+    global trigger_flag
     if "pi-record" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 0)
+        trigger_flag = setBit(trigger_flag, 3)
     if "pi-stream" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 1)
+        trigger_flag = setBit(trigger_flag, 4)
     if "pi-tlapse" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 2)
+        trigger_flag = setBit(trigger_flag, 5)
 
 def silentremove(filename):
     try:
@@ -316,6 +317,9 @@ def close_shutter():
         os.system("shutter 99 >/dev/null 2>&1")
 
 def picamstartrecord():
+    global trigger_flag
+    global process_flag
+    
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -332,7 +336,7 @@ def picamstartrecord():
         logging.info(f"Recording: {OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
-        while testBit(process_flag, 0) != 0) and filetime <= VIDEOLENGTH:
+        while (testBit(process_flag, 0) != 0) and filetime <= VIDEOLENGTH:
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 camera.annotate_background = picamera.Color('black')
@@ -345,8 +349,12 @@ def picamstartrecord():
         time.sleep(.5) 
         camera.stop_recording()
     camera.close()
+    trigger_flag = clearBit(trigger_flag, 0)
     time.sleep(1)
 def picamstarttlapse():
+    global trigger_flag
+    global process_flag
+    
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -365,6 +373,9 @@ def picamstarttlapse():
     camera.close()
     time.sleep(1)
 def picamstartstream():
+    global trigger_flag
+    global process_flag
+    
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
         output = StreamingOutput()
@@ -439,23 +450,25 @@ if __name__ == "__main__":
     logging.debug(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
-
+    logging.info(f"Waiting for something to do.")
     # Set initial state if (single or multiple) files exist.
 
-    if(path.exists(WATCHPATH + "pi-tlapse") is True):
+    if(path.exists(WATCHPATH + "pi-record") is True):
         trigger_flag = setBit(trigger_flag, 0)
-        silentremoveexcept(WATCHPATH, "pi-tlapse")
-
-    elif(path.exists(WATCHPATH + "pi-record") is True):
-        trigger_flag = setBit(trigger_flag, 1)
         silentremoveexcept(WATCHPATH, "pi-record")
+
+    elif(path.exists(WATCHPATH + "pi-tlapse") is True):
+        trigger_flag = setBit(trigger_flag, 1)
+        silentremoveexcept(WATCHPATH, "pi-tlapse")
 
     elif(path.exists(WATCHPATH + "pi-stream") is True):
         trigger_flag = setBit(trigger_flag, 2)
         silentremoveexcept(WATCHPATH, "pi-stream")
-
     else:
         # Delete everything.
+        # trigger_flag = setBit(trigger_flag, 3)
+        # trigger_flag = setBit(trigger_flag, 4)
+        # trigger_flag = setBit(trigger_flag, 5)
         silentremoveexcept(WATCHPATH, "pi-^^^")
 
     # Start watching for events...
@@ -467,28 +480,33 @@ if __name__ == "__main__":
 
     try:
         while True:
+            print(format(trigger_flag, '010b') + " " + format(process_flag, '010b'))
             # Stop Record (bit 3)
             if(testBit(trigger_flag, 3) != 0):
-                setBit(trigger_flag, 3) = 0)
+                trigger_flag = clearBit(trigger_flag, 3)
+                process_flag = clearBit(process_flag, 0)
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
                 logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
-                setBit(process_flag, 0) = 0
+                
 
             # Stop Stream (bit 4)
             if(testBit(trigger_flag, 4) != 0):
-                setBit(trigger_flag, 4) = 0)
+                trigger_flag = setBit(trigger_flag, 4)
                 # stop stream
-                setBit(process_flag, 1) = 0
+                trigger_flag = setBit(process_flag, 1)
                     
             # Stop TimeLapse (bit 5)
             if(testBit(trigger_flag, 5) != 0):
-                setBit(trigger_flag, 5) = 0)
+                trigger_flag = setBit(trigger_flag, 5)
                 # stop tlapse
-                setBit(process_flag, 2) = 0
+                trigger_flag = setBit(process_flag, 2)
 
             # Stop everything (bit 6)
             if(testBit(trigger_flag, 6) != 0):
+                process_flag = clearBit(process_flag, 0)
+                process_flag = clearBit(process_flag, 1)
+                process_flag = clearBit(process_flag, 2)
 
             # Make sure nothing is running
             if(testBit(process_flag, 0) + testBit(process_flag, 1) + testBit(process_flag, 2) == 0):
@@ -496,11 +514,13 @@ if __name__ == "__main__":
                 # Start Record (bit 0)
                 if(testBit(trigger_flag, 0) != 0):
                     record_thread.start()
-                    setBit(process_flag, 0) = 0
+                    process_flag = setBit(process_flag, 0)
                     logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+
                 # Start Stream (bit 1)
                 if(testBit(trigger_flag, 1) != 0):
                     pass
+
                 # Start TimeLapse (bit 2)
                 if(testBit(trigger_flag, 2) != 0):
                     pass
