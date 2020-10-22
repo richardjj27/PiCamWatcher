@@ -179,7 +179,6 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
-
 def CleanOldFiles():
     freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
     # clean video files (based on free space)
@@ -188,9 +187,8 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
             full_path = [OUTPUTPATHVIDEO + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.debug(f"Freespace: {int(freespace)}GB")
-            silentremove(oldest_file)
-            # os.remove(oldest_file)
+            logging.debug(f"Deleting: {oldest_file}   Freespace: {int(freespace)}GB")
+            os.remove(oldest_file)
             freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
     
     # clean image files (based on folder size)
@@ -200,113 +198,43 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHIMAGE), "RPi*.*")
             full_path = [OUTPUTPATHIMAGE + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.debug(f"Used Space: {int(imageusedspace)}MB")
-            silentremove(oldest_file)
-            # os.remove(oldest_file)
+            logging.debug(f"Deleting: {oldest_file}   Used Space: {int(imageusedspace)}MB")
+            os.remove(oldest_file)
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
-
-# def on_created(event):
-#     if "pi-record" in event.src_path:
-#         silentremove(WATCHPATH + "/pi-stream")
-#         silentremove(WATCHPATH + "/pi-tlapse")
-#     elif "pi-stoprecord" in event.src_path:
-#         silentremove(event.src_path)
-#         silentremove(WATCHPATH + "/pi-record")
-
-#     if "pi-tlapse" in event.src_path:
-#         silentremove(WATCHPATH + "/pi-stream")
-#         silentremove(WATCHPATH + "/pi-record")
-#     elif "pi-stoptlapse" in event.src_path:
-#         silentremove(event.src_path)
-#         silentremove(WATCHPATH + "//pi-tlapse")
-
-#     if "pi-stream" in event.src_path:
-#         silentremove(WATCHPATH + "/pi-record")
-#         silentremove(WATCHPATH + "/pi-tlapse")
-#     elif "pi-stopstream" in event.src_path:
-#         silentremove(event.src_path)
-#         silentremove(WATCHPATH + "/pi-stream")
-
-#     if "pi-stopall" in event.src_path:
-#         silentremove(WATCHPATH + "/pi-record")
-#         silentremove(WATCHPATH + "/pi-stream")
-#         silentremove(WATCHPATH + "/pi-tlapse")
-#         silentremove(WATCHPATH + "/pi-stopall")
-
-# testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.
-def testBit(int_type, offset):
-    mask = 1 << offset
-    return(int_type & mask)
-
-# setBit() returns an integer with the bit at 'offset' set to 1.
-def setBit(int_type, offset):
-    mask = 1 << offset
-    return(int_type | mask)
-
-# clearBit() returns an integer with the bit at 'offset' cleared.
-def clearBit(int_type, offset):
-    mask = ~(1 << offset)
-    return(int_type & mask)
- 
-# toggleBit() returns an integer with the bit at 'offset' inverted, 0 -> 1 and 1 -> 0.
-def toggleBit(int_type, offset):
-    mask = 1 << offset
-    return(int_type ^ mask)
 
 def on_created(event):
     if "pi-record" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 0)
-    if "pi-stream" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 1)
-    if "pi-tlapse" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 2)
-    if "pi-stoprecord" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 3)
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-tlapse")
+    elif "pi-stoprecord" in event.src_path:
         silentremove(event.src_path)
         silentremove(WATCHPATH + "/pi-record")
-    if "pi-stopstream" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 4)
+
+    if "pi-tlapse" in event.src_path:
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-record")
+    elif "pi-stoptlapse" in event.src_path:
+        silentremove(event.src_path)
+        silentremove(WATCHPATH + "//pi-tlapse")
+
+    if "pi-stream" in event.src_path:
+        silentremove(WATCHPATH + "/pi-record")
+        silentremove(WATCHPATH + "/pi-tlapse")
+    elif "pi-stopstream" in event.src_path:
         silentremove(event.src_path)
         silentremove(WATCHPATH + "/pi-stream")
-    if "pi-stoptlapse" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 5)
-        silentremove(event.src_path)
-        silentremove(WATCHPATH + "/pi-tlapse")
+
     if "pi-stopall" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 6)
-        silentremove(event.src_path)
         silentremove(WATCHPATH + "/pi-record")
         silentremove(WATCHPATH + "/pi-stream")
         silentremove(WATCHPATH + "/pi-tlapse")
-    if "pi-stopscript" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 7)
-        silentremove(event.src_path)
-    if "pi-reboot" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 8)
-        silentremove(event.src_path)
-
-def on_deleted(event):
-    if "pi-record" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 0)
-    if "pi-stream" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 1)
-    if "pi-tlapse" in event.src_path:
-        trigger_flag = clearBit(trigger_flag, 2)
-
+        silentremove(WATCHPATH + "/pi-stopall")
 def silentremove(filename):
     try:
         time.sleep(.5)
-        logging.debug(f"Deleting: {filename}")
         os.remove(filename)
     except:
         pass
-
-def silentremoveexcept(keeppath, keepfilename):
-    # put some code here
-    for entry in os.scandir(keeppath):
-        if ((entry.name) != keepfilename and entry.name.startswith("pi-") and entry.is_file()):
-            silentremove(entry.path)
-
 def picamstartrecord():
     global record_thread_status
     global shutter_open
@@ -421,9 +349,9 @@ if __name__ == "__main__":
     case_sensitive = False
     my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
     my_event_handler.on_created = on_created
-    my_event_handler.on_deleted = on_deleted
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
+    my_observer.start()
 
     global record_thread_status
     record_thread_status = False
@@ -433,10 +361,6 @@ if __name__ == "__main__":
     tlapse_thread_status = False
     global shutter_open
     shutter_open = False
-    global trigger_flag
-    trigger_flag = int('000000000000', 2)
-    global process_flag
-    process_flag = int('0000', 2)
     
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
@@ -463,31 +387,23 @@ if __name__ == "__main__":
     logging.debug(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
-
-    # Set initial state if (single or multiple) files exist.
-
-    if(path.exists(WATCHPATH + "pi-tlapse") is True):
-        trigger_flag = setBit(trigger_flag, 0)
-        silentremoveexcept(WATCHPATH, "pi-tlapse")
-
-    elif(path.exists(WATCHPATH + "pi-record") is True):
-        trigger_flag = setBit(trigger_flag, 1)
-        silentremoveexcept(WATCHPATH, "pi-record")
-
-    elif(path.exists(WATCHPATH + "pi-stream") is True):
-        trigger_flag = setBit(trigger_flag, 2)
-        silentremoveexcept(WATCHPATH, "pi-stream")
-
-    else:
-        # Delete everything.
-        silentremoveexcept(WATCHPATH, "pi-^^^")
-
-    # Start watching for events...
-    my_observer.start()
-
+    
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)          
     tlapse_thread = threading.Thread(target = picamstarttlapse)
+
+    if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-stream") == True):
+        silentremove(WATCHPATH + "/pi-stream")
+
+    if(path.exists(WATCHPATH + "/pi-record") == True and path.exists(WATCHPATH + "/pi-tlapse") == True):
+        silentremove(WATCHPATH + "/pi-record")
+
+    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True):
+        silentremove(WATCHPATH + "/pi-stream")
+
+    if(path.exists(WATCHPATH + "/pi-tlapse") == True and path.exists(WATCHPATH + "/pi-stream") == True and path.exists(WATCHPATH + "/pi-record") == True):
+        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "/pi-record")
 
     try:
         while True:
