@@ -93,7 +93,7 @@ IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
-# FLAGS
+# trigger_flag  9876543210
 # PI-RECORD     0000000001
 # PI-STREAM     0000000010
 # PI-TLAPSE     0000000100
@@ -103,13 +103,13 @@ SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 # PI-STOPALL    0001000000
 # PI-STOPSCRIPT 0010000000
 # PI-REBOOT     0100000000
+# ShutterOpen   1000000000
 
-# PROCESSES
+# process_flag  9876543210
 # Idle          0000000000
 # Recording     0000000001
 # Streaming     0000000010
-# Timelapsing   0000000011
-# 
+# Timelapsing   0000000100
 
 PAGE="""\
 <html>
@@ -307,12 +307,15 @@ def silentremoveexcept(keeppath, keepfilename):
         if ((entry.name) != keepfilename and entry.name.startswith("pi-") and entry.is_file()):
             silentremove(entry.path)
 
+def open_shutter():
+    if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
+        os.system("shutter 1 >/dev/null 2>&1")
+
+def close_shutter():
+    if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
+        os.system("shutter 99 >/dev/null 2>&1")
+
 def picamstartrecord():
-    global record_thread_status
-    global shutter_open
-    if(SHUTTEREXISTS is True):
-        logging.info("Open Shutter")
-        shutter_open = True
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -321,7 +324,7 @@ def picamstartrecord():
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
-    while record_thread_status is True:
+    while (testBit(process_flag, 0) != 0):
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
@@ -329,7 +332,7 @@ def picamstartrecord():
         logging.info(f"Recording: {OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
-        while record_thread_status is True and filetime <= VIDEOLENGTH:
+        while testBit(process_flag, 0) != 0) and filetime <= VIDEOLENGTH:
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 camera.annotate_background = picamera.Color('black')
@@ -341,17 +344,9 @@ def picamstartrecord():
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
-    if(SHUTTEREXISTS is True):
-        logging.info("Close Shutter")
-        shutter_open = False
     camera.close()
     time.sleep(1)
 def picamstarttlapse():
-    global tlapse_thread_status
-    global shutter_open
-    if(SHUTTEREXISTS is True):
-        logging.info("Open Shutter")
-        shutter_open = True
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -367,19 +362,9 @@ def picamstarttlapse():
         logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         time.sleep(TIMELAPSEPERIOD)
-
-    if(SHUTTEREXISTS is True):
-        logging.info("Close Shutter")
-        shutter_open = False
     camera.close()
     time.sleep(1)
 def picamstartstream():
-    global stream_thread_status
-    global shutter_open
-    if(SHUTTEREXISTS is True):
-        logging.info("Open Shutter")
-        shutter_open = True
-    
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
         output = StreamingOutput()
@@ -409,11 +394,6 @@ def picamstartstream():
             #server.server_close()
             camera.stop_recording()
 
-    time.sleep(1)
-    if(SHUTTEREXISTS is True):
-        logging.info("Close Shutter")
-        shutter_open = False
-
 if __name__ == "__main__":
     patterns = "*"
     ignore_patterns = ""
@@ -425,18 +405,14 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
-    global record_thread_status
-    record_thread_status = False
     global stream_thread_status
     stream_thread_status = False
     global tlapse_thread_status
     tlapse_thread_status = False
-    global shutter_open
-    shutter_open = False
     global trigger_flag
     trigger_flag = int('000000000000', 2)
     global process_flag
-    process_flag = int('0000', 2)
+    process_flag = int('000000000000', 2)
     
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
@@ -491,61 +467,65 @@ if __name__ == "__main__":
 
     try:
         while True:
-            time.sleep(1)
+            # Stop Record (bit 3)
+            if(testBit(trigger_flag, 3) != 0):
+                setBit(trigger_flag, 3) = 0)
+                record_thread.join()
+                record_thread = threading.Thread(target = picamstartrecord)
+                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                setBit(process_flag, 0) = 0
 
-            if(path.exists(WATCHPATH + "/pi-stopscript") is True):
+            # Stop Stream (bit 4)
+            if(testBit(trigger_flag, 4) != 0):
+                setBit(trigger_flag, 4) = 0)
+                # stop stream
+                setBit(process_flag, 1) = 0
+                    
+            # Stop TimeLapse (bit 5)
+            if(testBit(trigger_flag, 5) != 0):
+                setBit(trigger_flag, 5) = 0)
+                # stop tlapse
+                setBit(process_flag, 2) = 0
+
+            # Stop everything (bit 6)
+            if(testBit(trigger_flag, 6) != 0):
+
+            # Make sure nothing is running
+            if(testBit(process_flag, 0) + testBit(process_flag, 1) + testBit(process_flag, 2) == 0):
+                close_shutter()     
+                # Start Record (bit 0)
+                if(testBit(trigger_flag, 0) != 0):
+                    record_thread.start()
+                    setBit(process_flag, 0) = 0
+                    logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                # Start Stream (bit 1)
+                if(testBit(trigger_flag, 1) != 0):
+                    pass
+                # Start TimeLapse (bit 2)
+                if(testBit(trigger_flag, 2) != 0):
+                    pass
+            else:
+                open_shutter()
+
+            # Exit Script (bit 7)
+            if(testBit(trigger_flag, 7) != 0):
                 logging.info("Force Quit Script Instruction ")
                 silentremove(WATCHPATH + "/pi-stopscript")
                 os._exit(1)
 
-            if(path.exists(WATCHPATH + "/pi-reboot") is True):
+            # Reboot Device (bit 8)
+            if(testBit(trigger_flag, 8) != 0):
                 logging.info("Force Reboot Instruction ")
                 silentremove(WATCHPATH + "/pi-reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
 
-            if(path.exists(WATCHPATH + "/pi-record") is True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
-                record_thread_status = True
-                record_thread.start()
-                logging.info(f"Start Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
-
-            if(path.exists(WATCHPATH + "/pi-tlapse") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
-                tlapse_thread_status = True
-                tlapse_thread.start()
-                logging.info(f"Start Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
-
-            elif(path.exists(WATCHPATH + "/pi-stream") == True and record_thread.is_alive() is False and stream_thread.is_alive() is False and tlapse_thread.is_alive() is False):
-                stream_thread_status = True
-                stream_thread.start()
-                logging.info(f"Start Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
-
-            elif(path.exists(WATCHPATH + "/pi-record") == False and record_thread.is_alive() is True):
-                record_thread_status = False
-                record_thread.join()
-                record_thread = threading.Thread(target = picamstartrecord)
-                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {record_thread_status}, {threading.active_count()}")
-
-            elif(path.exists(WATCHPATH + "/pi-tlapse") == False and  tlapse_thread.is_alive() is True):
-                tlapse_thread_status = False
-                tlapse_thread.join()
-                tlapse_thread = threading.Thread(target = picamstartrecord)
-                logging.info(f"Stop Timelapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {tlapse_thread_status}, {threading.active_count()}")
-
-            elif(path.exists(WATCHPATH + "/pi-stream") == False and stream_thread.is_alive() is True):
-                stream_thread_status = False
-                stream_thread.join()
-                stream_thread = threading.Thread(target = picamstartstream)
-                logging.info(f"Stop Stream : {stream_thread}, {stream_thread.is_alive()}, {stream_thread_status}, {threading.active_count()}")
-
-            # Make sure the shutter is open every ten seconds.
-            if(int(dt.datetime.now().strftime('%S')) % 10 == 3):
-                if(shutter_open is True and SHUTTEREXISTS is True):
-                    os.system("shutter 99 >/dev/null 2>&1")
-                else:
-                    os.system("shutter 1 >/dev/null 2>&1")
-            
             # Log temperature every minute.
             if(int(dt.datetime.now().strftime('%S')) % 60 == 15):
                 logging.debug(f"Temperature = {CPUTemperature().temperature}C")
+
+            time.sleep(1)
+
+    
 
     except KeyboardInterrupt:
         #record_thread.join()
