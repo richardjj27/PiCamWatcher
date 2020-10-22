@@ -173,7 +173,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_error(404)
             self.end_headers()
     def log_message(self, format, *args):
-        logging.debug(f"{self.client_address[0]} {self.requestline}")
+        logging.info(f"{self.client_address[0]} {self.requestline}")
         return
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
@@ -187,7 +187,7 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
             full_path = [OUTPUTPATHVIDEO + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.debug(f"Freespace: {int(freespace)}GB")
+            logging.info(f"Freespace: {int(freespace)}GB")
             silentremove(oldest_file)
             # os.remove(oldest_file)
             freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1073741824
@@ -199,7 +199,7 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHIMAGE), "RPi*.*")
             full_path = [OUTPUTPATHIMAGE + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            logging.debug(f"Used Space: {int(imageusedspace)}MB")
+            logging.info(f"Used Space: {int(imageusedspace)}MB")
             silentremove(oldest_file)
             # os.remove(oldest_file)
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
@@ -261,23 +261,23 @@ def on_created(event):
     if "pi-tlapse" in event.src_path:
         trigger_flag = setBit(trigger_flag, 2)
     if "pi-stoprecord" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 3)
+        #trigger_flag = setBit(trigger_flag, 3)
         silentremove(event.src_path)
-        silentremove(WATCHPATH + "/pi-record")
+        silentremove(WATCHPATH + "pi-record")
     if "pi-stopstream" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 4)
+        #trigger_flag = setBit(trigger_flag, 4)
         silentremove(event.src_path)
-        silentremove(WATCHPATH + "/pi-stream")
+        silentremove(WATCHPATH + "pi-stream")
     if "pi-stoptlapse" in event.src_path:
-        trigger_flag = setBit(trigger_flag, 5)
+        #trigger_flag = setBit(trigger_flag, 5)
         silentremove(event.src_path)
-        silentremove(WATCHPATH + "/pi-tlapse")
+        silentremove(WATCHPATH + "pi-tlapse")
     if "pi-stopall" in event.src_path:
         trigger_flag = setBit(trigger_flag, 6)
         silentremove(event.src_path)
-        silentremove(WATCHPATH + "/pi-record")
-        silentremove(WATCHPATH + "/pi-stream")
-        silentremove(WATCHPATH + "/pi-tlapse")
+        silentremove(WATCHPATH + "pi-record")
+        silentremove(WATCHPATH + "pi-stream")
+        silentremove(WATCHPATH + "pi-tlapse")
     if "pi-stopscript" in event.src_path:
         trigger_flag = setBit(trigger_flag, 7)
         silentremove(event.src_path)
@@ -297,7 +297,7 @@ def on_deleted(event):
 def silentremove(filename):
     try:
         time.sleep(.5)
-        logging.debug(f"Deleting: {filename}")
+        logging.info(f"Deleting: {filename}")
         os.remove(filename)
     except:
         pass
@@ -319,7 +319,7 @@ def close_shutter():
 def picamstartrecord():
     global trigger_flag
     global process_flag
-    
+
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -343,18 +343,18 @@ def picamstartrecord():
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
             if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
-                logging.debug(f"Take Snapshot Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                logging.info(f"Take Snapshot Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
-    camera.close()
+    camera.close()    
     trigger_flag = clearBit(trigger_flag, 0)
     time.sleep(1)
 def picamstarttlapse():
     global trigger_flag
     global process_flag
-    
+
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -362,7 +362,7 @@ def picamstarttlapse():
     camera.contrast = CONTRAST
     videoprefix = "RPiT-"
 
-    while tlapse_thread_status is True:
+    while (testBit(process_flag, 2) != 0):
         # more stuff in here...
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -370,8 +370,11 @@ def picamstarttlapse():
         logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         time.sleep(TIMELAPSEPERIOD)
+    print("yyy")
     camera.close()
+    trigger_flag = clearBit(trigger_flag, 2)
     time.sleep(1)
+    print("xxx")
 def picamstartstream():
     global trigger_flag
     global process_flag
@@ -404,6 +407,7 @@ def picamstartstream():
         finally:
             #server.server_close()
             camera.stop_recording()
+            trigger_flag = clearBit(trigger_flag, 1)
 
 if __name__ == "__main__":
     patterns = "*"
@@ -416,40 +420,40 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
-    global stream_thread_status
+    # global stream_thread_status
     stream_thread_status = False
-    global tlapse_thread_status
+    # global tlapse_thread_status
     tlapse_thread_status = False
-    global trigger_flag
+    # global trigger_flag
     trigger_flag = int('000000000000', 2)
-    global process_flag
+    # global process_flag
     process_flag = int('000000000000', 2)
     
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
-    console.setLevel(logging.DEBUG)
+    console.setLevel(logging.INFO)
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-    logging.debug(f"OUTPUTPATHVIDEO = {OUTPUTPATHVIDEO}")
-    logging.debug(f"OUTPUTPATHIMAGE = {OUTPUTPATHIMAGE}")
-    logging.debug(f"WATCHPATH = {WATCHPATH}")
-    logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
-    logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
-    logging.debug(f"FRAMEPS = {FRAMEPS}")
-    logging.debug(f"QUALITY = {QUALITY}")
-    logging.debug(f"VIDEOLENGTH = {VIDEOLENGTH}")
-    logging.debug(f"TIMELAPSEPERIOD = {TIMELAPSEPERIOD}")
-    logging.debug(f"STREAMPORT = {STREAMPORT}")
-    logging.debug(f"TIMESTAMP = {TIMESTAMP}")
-    logging.debug(f"ROTATION = {ROTATION}")
-    logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
-    logging.debug(f"CONTRAST = {CONTRAST}")
-    logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}GB")
-    logging.debug(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
-    logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
-    logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
+    logging.info(f"OUTPUTPATHVIDEO = {OUTPUTPATHVIDEO}")
+    logging.info(f"OUTPUTPATHIMAGE = {OUTPUTPATHIMAGE}")
+    logging.info(f"WATCHPATH = {WATCHPATH}")
+    logging.info(f"RESOLUTIONX = {RESOLUTIONX}")
+    logging.info(f"RESOLUTIONY = {RESOLUTIONY}")
+    logging.info(f"FRAMEPS = {FRAMEPS}")
+    logging.info(f"QUALITY = {QUALITY}")
+    logging.info(f"VIDEOLENGTH = {VIDEOLENGTH}")
+    logging.info(f"TIMELAPSEPERIOD = {TIMELAPSEPERIOD}")
+    logging.info(f"STREAMPORT = {STREAMPORT}")
+    logging.info(f"TIMESTAMP = {TIMESTAMP}")
+    logging.info(f"ROTATION = {ROTATION}")
+    logging.info(f"BRIGHTNESS = {BRIGHTNESS}")
+    logging.info(f"CONTRAST = {CONTRAST}")
+    logging.info(f"FREESPACELIMIT = {FREESPACELIMIT}GB")
+    logging.info(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
+    logging.info(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
+    logging.info(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
     logging.info(f"Waiting for something to do.")
     # Set initial state if (single or multiple) files exist.
 
@@ -457,13 +461,14 @@ if __name__ == "__main__":
         trigger_flag = setBit(trigger_flag, 0)
         silentremoveexcept(WATCHPATH, "pi-record")
 
-    elif(path.exists(WATCHPATH + "pi-tlapse") is True):
+    elif(path.exists(WATCHPATH + "pi-stream") is True):
         trigger_flag = setBit(trigger_flag, 1)
+        silentremoveexcept(WATCHPATH, "pi-stream")
+
+    elif(path.exists(WATCHPATH + "pi-tlapse") is True):
+        trigger_flag = setBit(trigger_flag, 2)
         silentremoveexcept(WATCHPATH, "pi-tlapse")
 
-    elif(path.exists(WATCHPATH + "pi-stream") is True):
-        trigger_flag = setBit(trigger_flag, 2)
-        silentremoveexcept(WATCHPATH, "pi-stream")
     else:
         # Delete everything.
         # trigger_flag = setBit(trigger_flag, 3)
@@ -484,29 +489,31 @@ if __name__ == "__main__":
             # Stop Record (bit 3)
             if(testBit(trigger_flag, 3) != 0):
                 trigger_flag = clearBit(trigger_flag, 3)
-                process_flag = clearBit(process_flag, 0)
+                process_flag = clearBit(process_flag, 0)             
+                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
                 record_thread.join()
                 record_thread = threading.Thread(target = picamstartrecord)
-                logging.info(f"Stop Record : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
-                
-
             # Stop Stream (bit 4)
             if(testBit(trigger_flag, 4) != 0):
                 trigger_flag = setBit(trigger_flag, 4)
-                # stop stream
-                trigger_flag = setBit(process_flag, 1)
-                    
+                process_flag = clearBit(process_flag, 1)
+                          
+                logging.info(f"Stop Streaming : {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                tlapse_thread.join()
+                stream_thread = threading.Thread(target = picamstartstream)
             # Stop TimeLapse (bit 5)
             if(testBit(trigger_flag, 5) != 0):
                 trigger_flag = setBit(trigger_flag, 5)
-                # stop tlapse
-                trigger_flag = setBit(process_flag, 2)
-
+                process_flag = clearBit(process_flag, 2)
+                print(format(trigger_flag, '010b') + " " + format(process_flag, '010b'))          
+                logging.info(f"Stop TimeLapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                tlapse_thread.join()
+                tlapse_thread = threading.Thread(target = picamstarttlapse)
             # Stop everything (bit 6)
             if(testBit(trigger_flag, 6) != 0):
-                process_flag = clearBit(process_flag, 0)
-                process_flag = clearBit(process_flag, 1)
-                process_flag = clearBit(process_flag, 2)
+                process_flag = clearBit(trigger_flag, 3)
+                process_flag = clearBit(trigger_flag, 4)
+                process_flag = clearBit(trigger_flag, 5)
 
             # Make sure nothing is running
             if(testBit(process_flag, 0) + testBit(process_flag, 1) + testBit(process_flag, 2) == 0):
@@ -523,7 +530,10 @@ if __name__ == "__main__":
 
                 # Start TimeLapse (bit 2)
                 if(testBit(trigger_flag, 2) != 0):
-                    pass
+                    if(testBit(trigger_flag, 2) != 0):
+                        tlapse_thread.start()
+                        process_flag = setBit(process_flag, 2)
+                        logging.info(f"Start TimeLapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
             else:
                 open_shutter()
 
@@ -541,7 +551,7 @@ if __name__ == "__main__":
 
             # Log temperature every minute.
             if(int(dt.datetime.now().strftime('%S')) % 60 == 15):
-                logging.debug(f"Temperature = {CPUTemperature().temperature}C")
+                logging.info(f"Temperature = {CPUTemperature().temperature}C")
 
             time.sleep(1)
 
