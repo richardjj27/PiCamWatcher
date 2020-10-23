@@ -11,7 +11,6 @@
 # Todo:
 #  Make it run as a service/startup - learn
 #  Tidy up imports - learn
-#  Get global variables sorted out - learn
 #  Clean up the code and make more pythony - learn.
 #  Add some more trigger files?  Perhaps take overriding attributes
 #    Have a think...
@@ -20,7 +19,6 @@
 #    ????
 #  Setting framerate to something other than 30 gets weird results.
 #  Do some basic checks.
-#  Add a 'script started' logging event.
 
 # Done:
 #* Put some file rotation login in
@@ -53,6 +51,8 @@
 #* Split Video and Image output folders.
 #* Change the timelapse option to take JPGs instead.
 #* As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
+#* Add a 'script started' logging event.
+#* Get global variables sorted out - learn
 
 import time
 import threading
@@ -387,12 +387,6 @@ if __name__ == "__main__":
     my_event_handler.on_deleted = on_deleted
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
-
-    # global stream_thread_status
-    # stream_thread_status = False
-    # global tlapse_thread_status
-    # tlapse_thread_status = False
-
     
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
@@ -454,7 +448,6 @@ if __name__ == "__main__":
                 trigger_flag = clearBit(trigger_flag, 3)
                 logging.info(f"Stop Recording Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}") 
                 trigger_flag = clearBit(trigger_flag, 0)             
-                # Wait until record_thread to die.
                 while testBit(process_flag, 0) != 0:
                     time.sleep(1)
                 record_thread.join()
@@ -466,7 +459,6 @@ if __name__ == "__main__":
                 trigger_flag = setBit(trigger_flag, 4)
                 logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 trigger_flag = clearBit(process_flag, 1)
-                # Wait until stream_thread to die.
                 while testBit(process_flag, 1) != 0:
                     time.sleep(1)
                 stream_thread.join()                
@@ -478,7 +470,6 @@ if __name__ == "__main__":
                 trigger_flag = clearBit(trigger_flag, 5)
                 logging.info(f"Stop TimeLapse Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
                 trigger_flag = clearBit(trigger_flag, 2) 
-                # Wait until tlapse_thread to die.
                 while testBit(process_flag, 2) != 0:
                     time.sleep(1)                
                 tlapse_thread.join()
