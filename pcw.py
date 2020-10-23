@@ -92,6 +92,9 @@ IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
+trigger_flag = int('000000000000', 2)
+process_flag = int('000000000000', 2)
+
 # trigger_flag  9876543210
 # PI-RECORD     0000000001
 # PI-STREAM     0000000010
@@ -108,6 +111,7 @@ SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 # Recording     0000000001
 # Streaming     0000000010
 # Timelapsing   0000000100
+
 
 PAGE="""\
 <html>
@@ -154,7 +158,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
             self.end_headers()
             try:
-                while stream_thread_status is True:
+                while (testBit(trigger_flag, 1) != 0):
                     with output.condition:
                         output.condition.wait()
                         frame = output.frame
@@ -309,7 +313,7 @@ def picamstartrecord():
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
-    camera.close()    
+    camera.close()
     process_flag = clearBit(process_flag, 0)
     time.sleep(1)
 def picamstarttlapse():
@@ -341,6 +345,7 @@ def picamstarttlapse():
 def picamstartstream():
     global trigger_flag
     global process_flag
+    global stream_thread
     
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
@@ -357,20 +362,20 @@ def picamstartstream():
             threadstream.daemon = True
             logging.info(f"Open Streaming on port {STREAMPORT}")
             threadstream.start()
-            while stream_thread_status is True:
+            while (testBit(trigger_flag, 1) != 0):
                 if(TIMESTAMP is True):
                     camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     camera.annotate_background = picamera.Color('black')
                 time.sleep(1)
             server.shutdown()
-            logging.info("Stop Streaming")
+            #logging.info("Stop Streaming")
             #camera.stop_recording()
         except KeyboardInterrupt:
             pass
         finally:
             #server.server_close()
             camera.stop_recording()
-            trigger_flag = clearBit(trigger_flag, 1)
+            process_flag = clearBit(process_flag, 1)
 
 if __name__ == "__main__":
     patterns = "*"
@@ -387,10 +392,7 @@ if __name__ == "__main__":
     # stream_thread_status = False
     # global tlapse_thread_status
     # tlapse_thread_status = False
-    global trigger_flag
-    trigger_flag = int('000000000000', 2)
-    global process_flag
-    process_flag = int('000000000000', 2)
+
     
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename='./debug.log', filemode='w')
     console = logging.StreamHandler()
@@ -452,35 +454,37 @@ if __name__ == "__main__":
                 trigger_flag = clearBit(trigger_flag, 3)
                 logging.info(f"Stop Recording Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}") 
                 trigger_flag = clearBit(trigger_flag, 0)             
-
                 # Wait until record_thread to die.
-                while testBit(process_flag, 20) != 0:
+                while testBit(process_flag, 0) != 0:
                     time.sleep(1)
-
                 record_thread.join()
                 logging.info(f"Stop Recording Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 record_thread = threading.Thread(target = picamstartrecord)
+
             if(testBit(trigger_flag, 4) != 0):
                 # Stop Stream (bit 4)
                 trigger_flag = setBit(trigger_flag, 4)
-                process_flag = clearBit(process_flag, 1)
-                          
-                logging.info(f"Stop Streaming : {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
-                tlapse_thread.join()
+                logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                trigger_flag = clearBit(process_flag, 1)
+                # Wait until stream_thread to die.
+                while testBit(process_flag, 1) != 0:
+                    time.sleep(1)
+                stream_thread.join()                
+                logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 stream_thread = threading.Thread(target = picamstartstream)   
+
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
                 trigger_flag = clearBit(trigger_flag, 5)
                 logging.info(f"Stop TimeLapse Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
-                trigger_flag = clearBit(trigger_flag, 2)
-  
+                trigger_flag = clearBit(trigger_flag, 2) 
                 # Wait until tlapse_thread to die.
                 while testBit(process_flag, 2) != 0:
-                    time.sleep(1)
-                
+                    time.sleep(1)                
                 tlapse_thread.join()
                 logging.info(f"Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 tlapse_thread = threading.Thread(target = picamstarttlapse)
+
             if(testBit(trigger_flag, 6) != 0):
                 # Stop everything (bit 6)
                 process_flag = clearBit(trigger_flag, 3)
@@ -502,7 +506,9 @@ if __name__ == "__main__":
 
                 # Start Stream (bit 1)
                 if(testBit(trigger_flag, 1) != 0):
-                    pass
+                    stream_thread.start()
+                    process_flag = setBit(process_flag, 1)
+                    logging.info(f"Start Streaming : {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
 
                 # Start TimeLapse (bit 2)
                 if(testBit(trigger_flag, 2) != 0):
