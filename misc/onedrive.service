@@ -1,0 +1,12 @@
+[Unit]
+Description=OneDrive Service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/onedrive
+ExecStart=/root/onedrive/onedrive --confdir /root/onedrive --resync --monitor --monitor-interval 30 --disable-notifications --enable-logging
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

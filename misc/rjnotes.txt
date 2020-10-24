@@ -1,0 +1,27 @@
+https://github.com/abraunegg/onedrive/blob/master/config
+https://www.youtube.com/watch?v=abwW3En7qOQ&t=263s
+https://ubuntu.com/tutorials/install-and-configure-samba#3-setting-up-samba
+
+compile the executable
+
+git clone ~/Github
+install dependencies (or are these needed just for the compile?)
+link onedrive
+cd ~/.config/onedrive
+nano config
+nano sync_list
+
+
+run onedrive and do the html link thing.
+onedrive --display-config
+
+
+
+/etc/systemd/system/onedrive.service
+
+systemctl enable onedrive
+systemctl start onedrive
+
+journalctl --unit=onedrive -f
+
+log files go to /var/log

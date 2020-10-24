@@ -1,0 +1,33 @@
+root        : DEBUG    RUNNINGPATH = /home/pi/Github/PiCamWatcher/
+root        : DEBUG    LOGPATH = /home/pi/Github/PiCamWatcher/logs/
+root        : DEBUG    OUTPUTPATHVIDEO = /home/pi/Github/PiCamWatcher/video/
+root        : DEBUG    OUTPUTPATHIMAGE = /home/pi/Github/PiCamWatcher/sync/PiCamWatcher/image/
+root        : DEBUG    WATCHPATH = /home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/
+root        : DEBUG    RESOLUTIONX = 1600
+root        : DEBUG    RESOLUTIONY = 1200
+root        : DEBUG    FRAMEPS = 30
+root        : DEBUG    QUALITY = 20
+root        : DEBUG    VIDEOLENGTH = 300
+root        : DEBUG    TIMELAPSEPERIOD = 10
+root        : DEBUG    STREAMPORT = 42687
+root        : DEBUG    TIMESTAMP = True
+root        : DEBUG    ROTATION = 270
+root        : DEBUG    BRIGHTNESS = 50
+root        : DEBUG    CONTRAST = 0
+root        : DEBUG    AWBMODE = auto
+root        : DEBUG    FREESPACELIMIT = 10240MB
+root        : DEBUG    IMAGEFOLDERLIMIT = 50MB
+root        : DEBUG    TAKESNAPSHOT = True
+root        : DEBUG    SHUTTEREXISTS = True
+root        : INFO     Waiting for something to do.
+watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_CREATE, cookie=0, name=pi-stream.txt>
+root        : INFO     Deleting: /home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt
+watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_DELETE, cookie=0, name=pi-stream.txt>
+watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_MODIFY, cookie=0, name=pi-stream.txt>
+root        : INFO     Stop Streaming Triggered: <Thread(Thread-5, initial)>, False, 4
+Traceback (most recent call last):
+  File "/home/pi/Github/PiCamWatcher/pcw.py", line 496, in <module>
+    stream_thread.join()                
+  File "/usr/lib/python3.7/threading.py", line 1027, in join
+    raise RuntimeError("cannot join thread before it is started")
+RuntimeError: cannot join thread before it is started
