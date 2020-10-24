@@ -12,11 +12,6 @@
 #  Make it run as a service/startup - learn
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
-#  Add some more trigger files?  Perhaps take overriding attributes
-#    Have a think...
-#  Put parameters at the top of the script as constants
-#    AWB?   
-#    ????
 #  Setting framerate to something other than 30 gets weird results.
 #  Do some basic checks.
 
@@ -33,7 +28,9 @@
 #*   Video length
 #*   Video resolution
 #*   Rotate
-#*    Brightness
+#*   Brightness
+#*   Contrast
+#*   AWB_Mode   
 #*   Timestamp
 #*   Take snapshot
 #* Put on GitHub
@@ -87,6 +84,7 @@ TIMESTAMP = True # Will a timestamp be put on photos and videos?
 ROTATION = 270 # Degrees of rotation to orient camera correctly.
 BRIGHTNESS = 50
 CONTRAST = 0
+AWBMODE = 'auto'
 FREESPACELIMIT = 96 # At how many GB free should old videos be deleted.  Timelapse JPGs will be ignored.
 IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
@@ -112,7 +110,6 @@ process_flag = int('000000000000', 2)
 # Streaming     0000000010
 # Timelapsing   0000000100
 
-
 PAGE="""\
 <html>
 <body>
@@ -137,6 +134,7 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
+
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
@@ -178,6 +176,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logging.info(f"{self.client_address[0]} {self.requestline}")
         return
+
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
@@ -207,18 +206,22 @@ def testBit(int_type, offset):
     # testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.
     mask = 1 << offset
     return(int_type & mask)
+
 def setBit(int_type, offset):
     # setBit() returns an integer with the bit at 'offset' set to 1.
     mask = 1 << offset
     return(int_type | mask)
+
 def clearBit(int_type, offset):
     # clearBit() returns an integer with the bit at 'offset' cleared.
     mask = ~(1 << offset)
     return(int_type & mask)
+
 def toggleBit(int_type, offset):
     # toggleBit() returns an integer with the bit at 'offset' inverted, 0 -> 1 and 1 -> 0.
     mask = 1 << offset
     return(int_type ^ mask)
+
 def on_created(event):
     global trigger_flag
     if "pi-record" in event.src_path:
@@ -254,6 +257,7 @@ def on_created(event):
     if "pi-reboot" in event.src_path:
         trigger_flag = setBit(trigger_flag, 8)
         silentremove(event.src_path)
+
 def on_deleted(event):
     global trigger_flag
     if "pi-record" in event.src_path:
@@ -262,6 +266,7 @@ def on_deleted(event):
         trigger_flag = setBit(trigger_flag, 4)
     if "pi-tlapse" in event.src_path:
         trigger_flag = setBit(trigger_flag, 5)
+
 def silentremove(filename, message = ""):
     try:
         time.sleep(.5)
@@ -269,17 +274,21 @@ def silentremove(filename, message = ""):
         os.remove(filename)
     except:
         pass
+
 def silentremoveexcept(keeppath, keepfilename):
     # put some code here
     for entry in os.scandir(keeppath):
         if ((entry.name) != keepfilename and entry.name.startswith("pi-") and entry.is_file()):
             silentremove(entry.path)
+
 def open_shutter():
     if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
         os.system("shutter 1 >/dev/null 2>&1")
+
 def close_shutter():
     if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
         os.system("shutter 99 >/dev/null 2>&1")
+
 def picamstartrecord():
     global trigger_flag
     global process_flag
@@ -290,6 +299,7 @@ def picamstartrecord():
     camera.rotation = ROTATION
     camera.brightness = BRIGHTNESS
     camera.contrast = CONTRAST
+    camera.awb_mode = AWBMODE
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
@@ -316,32 +326,7 @@ def picamstartrecord():
     camera.close()
     process_flag = clearBit(process_flag, 0)
     time.sleep(1)
-def picamstarttlapse():
-    global trigger_flag
-    global process_flag
-    global tlapse_thread
 
-    camera = PiCamera()
-    camera.resolution = (RESOLUTIONX, RESOLUTIONY)
-    camera.rotation = ROTATION
-    camera.brightness = BRIGHTNESS
-    camera.contrast = CONTRAST
-    videoprefix = "RPiT-"
-
-    while (testBit(trigger_flag, 2) != 0):
-        CleanOldFiles()
-        if(TIMESTAMP is True):
-            camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            camera.annotate_background = picamera.Color('black')
-        logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-        filetime = 0
-        while (testBit(trigger_flag, 2) != 0) and filetime <= TIMELAPSEPERIOD:
-            time.sleep(1)
-            filetime += 1
-    camera.close()
-    process_flag = clearBit(process_flag, 2)
-    time.sleep(1)
 def picamstartstream():
     global trigger_flag
     global process_flag
@@ -354,6 +339,7 @@ def picamstartstream():
         camera.rotation = ROTATION
         camera.brightness = BRIGHTNESS
         camera.contrast = CONTRAST
+        camera.awb_mode = AWBMODE
         camera.start_recording(output, format='mjpeg', quality=40)
         try:
             address = ('', STREAMPORT)
@@ -376,6 +362,34 @@ def picamstartstream():
             #server.server_close()
             camera.stop_recording()
             process_flag = clearBit(process_flag, 1)
+
+def picamstarttlapse():
+    global trigger_flag
+    global process_flag
+    global tlapse_thread
+
+    camera = PiCamera()
+    camera.resolution = (RESOLUTIONX, RESOLUTIONY)
+    camera.rotation = ROTATION
+    camera.brightness = BRIGHTNESS
+    camera.contrast = CONTRAST
+    camera.awb_mode = AWBMODE
+    videoprefix = "RPiT-"
+
+    while (testBit(trigger_flag, 2) != 0):
+        CleanOldFiles()
+        if(TIMESTAMP is True):
+            camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            camera.annotate_background = picamera.Color('black')
+        logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+        filetime = 0
+        while (testBit(trigger_flag, 2) != 0) and filetime <= TIMELAPSEPERIOD:
+            time.sleep(1)
+            filetime += 1
+    camera.close()
+    process_flag = clearBit(process_flag, 2)
+    time.sleep(1)
 
 if __name__ == "__main__":
     patterns = "*"
@@ -409,12 +423,13 @@ if __name__ == "__main__":
     logging.info(f"ROTATION = {ROTATION}")
     logging.info(f"BRIGHTNESS = {BRIGHTNESS}")
     logging.info(f"CONTRAST = {CONTRAST}")
+    logging.info(f"AWBMODE = {AWBMODE}")
     logging.info(f"FREESPACELIMIT = {FREESPACELIMIT}GB")
     logging.info(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
     logging.info(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.info(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
+    
     # Set initial state if (single or multiple) files exist.
-
     if(path.exists(WATCHPATH + "pi-record") is True):
         trigger_flag = setBit(trigger_flag, 0)
         silentremoveexcept(WATCHPATH, "pi-record")
@@ -429,9 +444,6 @@ if __name__ == "__main__":
 
     else:
         # Delete everything.
-        # trigger_flag = setBit(trigger_flag, 3)
-        # trigger_flag = setBit(trigger_flag, 4)
-        # trigger_flag = setBit(trigger_flag, 5)
         silentremoveexcept(WATCHPATH, "pi-^^^")
 
     # Start watching for events...
