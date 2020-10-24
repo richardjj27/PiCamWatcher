@@ -1,4 +1,4 @@
 sync/PiCamWatcher
 video/*
-debug.log
+logs/*
 test.py
