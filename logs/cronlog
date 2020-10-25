@@ -19,15 +19,30 @@ root        : DEBUG    FREESPACELIMIT = 10240MB
 root        : DEBUG    IMAGEFOLDERLIMIT = 50MB
 root        : DEBUG    TAKESNAPSHOT = True
 root        : DEBUG    SHUTTEREXISTS = True
-root        : INFO     Waiting for something to do.
-watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_CREATE, cookie=0, name=pi-stream.txt>
-root        : INFO     Deleting: /home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt
-watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_DELETE, cookie=0, name=pi-stream.txt>
-watchdog.observers.inotify_buffer: DEBUG    in-event <InotifyEvent: src_path=b'/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/pi-stream.txt', wd=1, mask=IN_MODIFY, cookie=0, name=pi-stream.txt>
-root        : INFO     Stop Streaming Triggered: <Thread(Thread-5, initial)>, False, 4
-Traceback (most recent call last):
-  File "/home/pi/Github/PiCamWatcher/pcw.py", line 496, in <module>
-    stream_thread.join()                
-  File "/usr/lib/python3.7/threading.py", line 1027, in join
-    raise RuntimeError("cannot join thread before it is started")
-RuntimeError: cannot join thread before it is started
+root        : INFO     Start Streaming : <Thread(Thread-5, started 3017798752)>,  True, 5
+root        : INFO     Open Streaming on port 42687
+root        : INFO     Temperature = 46.738°C
+root        : INFO     Temperature = 49.173°C
+root        : INFO     Temperature = 49.173°C
+root        : INFO     192.168.192.223 GET /index.html HTTP/1.1
+root        : INFO     192.168.192.223 GET /stream.mjpg HTTP/1.1
+root        : INFO     192.168.192.223 GET /favicon.ico HTTP/1.1
+root        : INFO     192.168.192.223 GET /favicon.ico HTTP/1.1
+root        : DEBUG    Removed streaming client ('192.168.192.223', 58393): [Errno 32] Broken pipe
+root        : INFO     Temperature = 49.66°C
+root        : INFO     Temperature = 50.147°C
+root        : INFO     Temperature = 49.173°C
+root        : INFO     Temperature = 50.147°C
+root        : INFO     192.168.192.223 GET /index.html HTTP/1.1
+root        : INFO     192.168.192.223 GET /stream.mjpg HTTP/1.1
+root        : INFO     192.168.192.223 GET /favicon.ico HTTP/1.1
+root        : INFO     192.168.192.223 GET /favicon.ico HTTP/1.1
+root        : DEBUG    Removed streaming client ('192.168.192.223', 58717): [Errno 32] Broken pipe
+root        : INFO     Temperature = 51.121°C
+root        : INFO     Temperature = 51.608°C
+root        : INFO     Temperature = 51.608°C
+root        : INFO     Temperature = 51.121°C
+root        : INFO     Temperature = 52.095°C
+root        : INFO     Temperature = 51.121°C
+root        : INFO     Temperature = 52.095°C
+root        : INFO     Temperature = 51.608°C
