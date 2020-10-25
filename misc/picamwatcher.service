@@ -1,0 +1,21 @@
+# sudo nano /lib/systemd/system/picamwatcher.service
+# sudo chmod 644 /lib/systemd/system/picamwatcher.service
+# sudo systemctl daemon-reload
+# sudo systemctl enable picamwatcher.service
+# sudo reboot
+# sudo systemctl status picamwatcher.service
+# sudo journalctl --unit=picamwatcher.service -f
+
+[Unit]
+Description=PiCamWatcher Service
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Github/PiCamWatcher
+ExecStart=/usr/bin/python3 /home/pi/Github/PiCamWatcher/pcw.py &> /dev/null
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

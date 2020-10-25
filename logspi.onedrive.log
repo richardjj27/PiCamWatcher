@@ -1,0 +1,8 @@
+2020-Oct-25 19:36:02.4290515	Configuring Global Azure AD Endpoints
+2020-Oct-25 19:36:03.2646668	Initializing the Synchronization Engine ...
+2020-Oct-25 19:36:03.2651739	Initializing monitor ...
+2020-Oct-25 19:36:03.265571	OneDrive monitor interval (seconds): 30
+2020-Oct-25 19:36:06.4682169	Downloading file PiCamWatcher/watch/energy3.txt ... done.
+2020-Oct-25 19:36:07.164735	Uploading differences of PiCamWatcher/watch/energy3.txt
+2020-Oct-25 19:36:07.1669551	Uploading new items of PiCamWatcher/watch/energy3.txt
+2020-Oct-25 19:36:09.3565506	Got termination signal, shutting down db connection

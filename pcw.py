@@ -14,7 +14,7 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  OneDrive sync should be a switch rather than an in code option
-#  Logging level should also be a switchh
+#  Logging level should also be a switch
 
 #  Do some basic checks.
 
@@ -239,15 +239,12 @@ def on_created(event):
         silentremoveexcept(WATCHPATH, "pi-tlapse")
         trigger_flag = setBit(trigger_flag, 2)
     if "pi-stoprecord" in event.src_path:
-        #trigger_flag = setBit(trigger_flag, 3)
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-record")
     if "pi-stopstream" in event.src_path:
-        #trigger_flag = setBit(trigger_flag, 4)
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-stream")
     if "pi-stoptlapse" in event.src_path:
-        #trigger_flag = setBit(trigger_flag, 5)
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-tlapse")
     if "pi-stopall" in event.src_path:
@@ -359,8 +356,9 @@ def picamstartstream():
                 if(TIMESTAMP is True):
                     camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     camera.annotate_background = picamera.Color('black')
-                time.sleep(1)
+                time.sleep(2)
             server.shutdown()
+            time.sleep(2)
             #logging.info("Stop Streaming")
             #camera.stop_recording()
         except KeyboardInterrupt:
@@ -409,17 +407,9 @@ if __name__ == "__main__":
     my_event_handler.on_deleted = on_deleted
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
-    
-    # # Setup logging (interactive)
-    # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=RUNNINGPATH + 'debug.log', filemode='w')
-    # console = logging.StreamHandler()
-    # console.setLevel(logging.INFO)
-    # formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-    # console.setFormatter(formatter)
-    # logging.getLogger().addHandler(console)
 
     # Setup logging (quiet background)
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "debug.log", filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "picamwwatcher.log", filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
@@ -488,12 +478,12 @@ if __name__ == "__main__":
 
             if(testBit(trigger_flag, 4) != 0):
                 # Stop Stream (bit 4)
-                trigger_flag = setBit(trigger_flag, 4)
+                trigger_flag = clearBit(trigger_flag, 4)
                 logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
-                trigger_flag = clearBit(process_flag, 1)
+                trigger_flag = clearBit(trigger_flag, 1)
                 while testBit(process_flag, 1) != 0:
                     time.sleep(1)
-                stream_thread.join()                
+                #stream_thread.join()                
                 logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 stream_thread = threading.Thread(target = picamstartstream)   
 

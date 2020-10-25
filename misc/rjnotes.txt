@@ -3,6 +3,10 @@ https://www.youtube.com/watch?v=abwW3En7qOQ&t=263s
 https://ubuntu.com/tutorials/install-and-configure-samba#3-setting-up-samba
 
 https://www.golinuxcloud.com/run-systemd-service-specific-user-group-linux/
+https://medium.com/@Tankado95/how-to-run-a-python-code-as-a-service-using-systemctl-4f6ad1835bf2
+https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units
+https://www.freedesktop.org/software/systemd/man/systemd.service.html
+
 
 
 git clone ~/Github
@@ -24,3 +28,10 @@ journalctl --unit=onedrive -f
 
 journalctl --user-unit=onedrive -f
 /var/log/onedrive
+
+
+
+
+clone the project
+do the crontab to start the script automatically
+do the service registration to make onedrive start automatically
