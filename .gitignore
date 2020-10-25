@@ -1,4 +1,5 @@
 sync/PiCamWatcher
+bin/refresh_token
 video/*
 logs/*
 test.py

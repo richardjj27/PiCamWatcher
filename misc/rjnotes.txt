@@ -13,6 +13,8 @@ nano config
 nano sync_list
 onedrive --display-config
 
+/home/pi/Github/PiCamWatcher/bin/onedrive --confdir /home/pi/Github/PiCamWatcher/bin
+
 sudo crontab -e
 sudo nano /etc/systemd/system/onedrive.service
 
