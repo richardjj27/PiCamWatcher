@@ -83,15 +83,15 @@ RESOLUTIONY = 1200
 FRAMEPS = 30
 QUALITY = 20 # 1 is best, 40 is worst.``
 VIDEOLENGTH = 300 # Recorded videos will rotate at this number of seconds.
-TIMELAPSEPERIOD = 10 # Timelapse JPGs will be taken at this number of seconds.
+TIMELAPSEPERIOD = 30 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
 TIMESTAMP = True # Will a timestamp be put on photos and videos?
 ROTATION = 270 # Degrees of rotation to orient camera correctly.
 BRIGHTNESS = 50
 CONTRAST = 0
-AWBMODE = 'auto'
+AWBMODE = "auto"
 FREESPACELIMIT = 10240 # At how many MB free should old videos be deleted.
-IMAGEFOLDERLIMIT = 50 # Maximum Size of JPG images to be kept (in MB)
+IMAGEFOLDERLIMIT = 20480 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
@@ -286,7 +286,7 @@ def silentremoveexcept(keeppath, keepfilename):
 def open_shutter():
     if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
         # logging.info("shutter open")
-        os.system(RUNNINGPATH + "/bin/shutter 1 >/dev/null 2>&1")
+        os.system(RUNNINGPATH + "/bin/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
     if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
