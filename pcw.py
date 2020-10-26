@@ -13,14 +13,9 @@
 #  Make it run as a service/startup - learn
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
-#  OneDrive sync should be a switch rather than an in code option
-#  Logging level should also be a switch
-#  Tidy up contstants
 #  Add a 'zero' option to ignore archive/cleaning operations.
 #  Do some validity checks for constants.
-
-
-#  Do some basic checks.
+#  Do some bug testing basic checks.
 
 # Done:
 #* Put some file rotation login in
@@ -59,6 +54,7 @@
 #* Get global variables sorted out - learn
 #* Added an archive option for images (keep this sync'd file small for OneDrive)
 #* Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
+#* Tidy up contstants
 
 import time
 import threading
@@ -85,18 +81,21 @@ VIDEOPATH = "/home/pi/Github/PiCamWatcher/video/"
 IMAGEPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/image/"
 IMAGEARCHIVEPATH = "/home/pi/Github/PiCamWatcher/image/"
 WATCHPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/"
+
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
+BRIGHTNESS = 50
+CONTRAST = 0
+AWBMODE = "auto"
 FRAMEPS = 30
-QUALITY = 20 # 1 is best, 40 is worst.``
+ROTATION = 270 # Degrees of rotation to orient camera correctly.
+QUALITY = 20 # 1 is best, 40 is worst.
+
 VIDEOINTERVAL = 300 # Recorded videos will rotate at this number of seconds.
 TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
 TIMESTAMP = True # Will a timestamp be put on photos and videos?
-ROTATION = 270 # Degrees of rotation to orient camera correctly.
-BRIGHTNESS = 50
-CONTRAST = 0
-AWBMODE = "auto"
+
 VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted.
 IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH
 IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted.
@@ -453,22 +452,22 @@ if __name__ == "__main__":
     logging.debug(f"WATCHPATH = {WATCHPATH}")
     logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
+    logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
+    logging.debug(f"CONTRAST = {CONTRAST}")
+    logging.debug(f"AWBMODE = {AWBMODE}")
     logging.debug(f"FRAMEPS = {FRAMEPS}")
+    logging.debug(f"ROTATION = {ROTATION}")
     logging.debug(f"QUALITY = {QUALITY}")
     logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL}")
     logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL}")
     logging.debug(f"STREAMPORT = {STREAMPORT}")
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
-    logging.debug(f"ROTATION = {ROTATION}")
-    logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
-    logging.debug(f"CONTRAST = {CONTRAST}")
-    logging.debug(f"AWBMODE = {AWBMODE}")
     logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
     logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
     logging.debug(f"IMAGEARCHIVEPATHLIMIT = {IMAGEARCHIVEPATHLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
-    
+
     # Set initial state if (single or multiple) files exist.
     if(path.exists(WATCHPATH + "pi-record") is True):
         trigger_flag = setBit(trigger_flag, 0)
