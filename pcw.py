@@ -15,6 +15,9 @@
 #  Clean up the code and make more pythony - learn.
 #  OneDrive sync should be a switch rather than an in code option
 #  Logging level should also be a switch
+#  Tidy up contstants
+#  Add a 'zero' option to ignore archive/cleaning operations.
+#  Do some validity checks for constants.
 
 #  Do some basic checks.
 
@@ -53,6 +56,7 @@
 #* As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
 #* Add a 'script started' logging event.
 #* Get global variables sorted out - learn
+#  Added an archive option for images (keep this sync'd file small for OneDrive)
 
 import time
 import threading
@@ -72,11 +76,13 @@ import datetime as dt
 import shutil
 import fnmatch
 from gpiozero import CPUTemperature
+import shutil
 
 RUNNINGPATH = "/home/pi/Github/PiCamWatcher/"
 LOGPATH = "/home/pi/Github/PiCamWatcher/logs/"
-OUTPUTPATHVIDEO = "/home/pi/Github/PiCamWatcher/video/"
-OUTPUTPATHIMAGE = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/image/"
+VIDEOPATH = "/home/pi/Github/PiCamWatcher/video/"
+IMAGEPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/image/"
+IMAGEARCHIVEPATH = "/home/pi/Github/PiCamWatcher/image/"
 WATCHPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/"
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
@@ -90,8 +96,9 @@ ROTATION = 270 # Degrees of rotation to orient camera correctly.
 BRIGHTNESS = 50
 CONTRAST = 0
 AWBMODE = "auto"
-FREESPACELIMIT = 10240 # At how many MB free should old videos be deleted.
-IMAGEFOLDERLIMIT = 20480 # Maximum Size of JPG images to be kept (in MB)
+VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted.
+IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH
+IMAGEARCHIVEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB)
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
@@ -187,25 +194,36 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     daemon_threads = True
 
 def CleanOldFiles():
-    freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1048576
-    # clean video files (based on free space)
-    if(freespace < FREESPACELIMIT):
-        while (freespace < FREESPACELIMIT):
-            list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHVIDEO), "RPiR-*.*")
-            full_path = [OUTPUTPATHVIDEO + "{0}".format(x) for x in list_of_files]
+    freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
+    
+    # clean video files (based on free space) > trash
+    if(freespace < VIDEOPATHFSLIMIT):
+        while (freespace < VIDEOPATHFSLIMIT):
+            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPiR-*.*")
+            full_path = [VIDEOPATH + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             silentremove(oldest_file, " / Free Space: " + ('{:.2f}'.format(freespace)) + "MB")
-            freespace = shutil.disk_usage(OUTPUTPATHVIDEO).free / 1048576
+            freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     
-    # clean image files (based on folder size)
-    imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
-    if(imageusedspace > IMAGEFOLDERLIMIT):
-        while (imageusedspace > IMAGEFOLDERLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(OUTPUTPATHIMAGE), "RPi*.*")
-            full_path = [OUTPUTPATHIMAGE + "{0}".format(x) for x in list_of_files]
+    # clean image files (based on folder size) > archive
+    imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
+    if(imageusedspace > IMAGEPATHLIMIT):
+        while (imageusedspace > IMAGEPATHLIMIT):
+            list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "RPi*.*")
+            full_path = [IMAGEPATH + "{0}".format(x) for x in list_of_files]
+            oldest_file = min(full_path, key=os.path.getctime)
+            silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+            imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
+
+    # clean archive image files (based on folder size) > trash
+    imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
+    if(imageusedspace > IMAGEARCHIVEPATHLIMIT):
+        while (imageusedspace > IMAGEARCHIVEPATHLIMIT):
+            list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
+            full_path = [IMAGEARCHIVEPATH + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
-            imageusedspace = (sum(d.stat().st_size for d in os.scandir(OUTPUTPATHIMAGE) if d.is_file())/1048576)
+            imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
 
 def testBit(int_type, offset):
     # testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.
@@ -277,6 +295,14 @@ def silentremove(filename, message = ""):
     except:
         pass
 
+def silentmove(filename, destination, message = ""):
+    try:
+        time.sleep(.5)
+        logging.info(f"Archiving: {filename}{message}")
+        shutil.move(filename, destination)
+    except:
+        pass
+
 def silentremoveexcept(keeppath, keepfilename):
     # put some code here
     for entry in os.scandir(keeppath):
@@ -311,8 +337,8 @@ def picamstartrecord():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        camera.start_recording(OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {OUTPUTPATHVIDEO + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
+        camera.start_recording(VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
+        logging.info(f"Recording: {VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         CleanOldFiles()
         filetime = 0
         while (testBit(trigger_flag, 0) != 0) and filetime <= VIDEOLENGTH:
@@ -322,8 +348,8 @@ def picamstartrecord():
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
             if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
-                logging.info(f"Take Snapshot Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-                camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+                logging.info(f"Take Snapshot Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
             filetime += 1
         time.sleep(.5) 
         camera.stop_recording()
@@ -386,8 +412,8 @@ def picamstarttlapse():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        logging.info(f"Take Timelapse Image : {OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        camera.capture(OUTPUTPATHIMAGE + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+        logging.info(f"Take Timelapse Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         filetime = 0
         while (testBit(trigger_flag, 2) != 0) and filetime <= TIMELAPSEPERIOD:
             time.sleep(1)
@@ -419,8 +445,8 @@ if __name__ == "__main__":
     # Log the constants
     logging.debug(f"RUNNINGPATH = {RUNNINGPATH}")
     logging.debug(f"LOGPATH = {LOGPATH}")
-    logging.debug(f"OUTPUTPATHVIDEO = {OUTPUTPATHVIDEO}")
-    logging.debug(f"OUTPUTPATHIMAGE = {OUTPUTPATHIMAGE}")
+    logging.debug(f"VIDEOPATH = {VIDEOPATH}")
+    logging.debug(f"IMAGEPATH = {IMAGEPATH}")
     logging.debug(f"WATCHPATH = {WATCHPATH}")
     logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
@@ -434,8 +460,8 @@ if __name__ == "__main__":
     logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
     logging.debug(f"CONTRAST = {CONTRAST}")
     logging.debug(f"AWBMODE = {AWBMODE}")
-    logging.debug(f"FREESPACELIMIT = {FREESPACELIMIT}MB")
-    logging.debug(f"IMAGEFOLDERLIMIT = {IMAGEFOLDERLIMIT}MB")
+    logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
+    logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
     
