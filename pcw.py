@@ -18,6 +18,7 @@
 #  Tidy up contstants
 #  Add a 'zero' option to ignore archive/cleaning operations.
 #  Do some validity checks for constants.
+#  Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
 
 #  Do some basic checks.
 
