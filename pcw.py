@@ -18,7 +18,7 @@
 #  Tidy up contstants
 #  Add a 'zero' option to ignore archive/cleaning operations.
 #  Do some validity checks for constants.
-#  Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
+
 
 #  Do some basic checks.
 
@@ -57,7 +57,8 @@
 #* As the images folder might be sync'd we need an option to keep its size in check (e.g. maximum size of the folder)
 #* Add a 'script started' logging event.
 #* Get global variables sorted out - learn
-#  Added an archive option for images (keep this sync'd file small for OneDrive)
+#* Added an archive option for images (keep this sync'd file small for OneDrive)
+#* Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
 
 import time
 import threading
@@ -77,7 +78,6 @@ import datetime as dt
 import shutil
 import fnmatch
 from gpiozero import CPUTemperature
-import shutil
 
 RUNNINGPATH = "/home/pi/Github/PiCamWatcher/"
 LOGPATH = "/home/pi/Github/PiCamWatcher/logs/"
@@ -89,8 +89,8 @@ RESOLUTIONX = 1600
 RESOLUTIONY = 1200
 FRAMEPS = 30
 QUALITY = 20 # 1 is best, 40 is worst.``
-VIDEOLENGTH = 300 # Recorded videos will rotate at this number of seconds.
-TIMELAPSEPERIOD = 30 # Timelapse JPGs will be taken at this number of seconds.
+VIDEOINTERVAL = 300 # Recorded videos will rotate at this number of seconds.
+TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
 TIMESTAMP = True # Will a timestamp be put on photos and videos?
 ROTATION = 270 # Degrees of rotation to orient camera correctly.
@@ -99,7 +99,7 @@ CONTRAST = 0
 AWBMODE = "auto"
 VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted.
 IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH
-IMAGEARCHIVEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB)
+IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted.
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
 
@@ -334,15 +334,17 @@ def picamstartrecord():
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
+    filetime = int(time.time())
     while (testBit(trigger_flag, 0) != 0):
+        filetime = (filetime + VIDEOINTERVAL)
+        CleanOldFiles()
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         camera.start_recording(VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
-        CleanOldFiles()
-        filetime = 0
-        while (testBit(trigger_flag, 0) != 0) and filetime <= VIDEOLENGTH:
+    
+        while (testBit(trigger_flag, 0) != 0) and (int(time.time()) <= filetime):
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 camera.annotate_background = picamera.Color('black')
@@ -351,8 +353,6 @@ def picamstartrecord():
             if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
                 logging.info(f"Take Snapshot Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-            filetime += 1
-        time.sleep(.5) 
         camera.stop_recording()
     camera.close()
     process_flag = clearBit(process_flag, 0)
@@ -408,17 +408,18 @@ def picamstarttlapse():
     camera.awb_mode = AWBMODE
     videoprefix = "RPiT-"
 
+    filetime = int(time.time())
     while (testBit(trigger_flag, 2) != 0):
+        filetime = (filetime + TIMELAPSEINTERVAL)
         CleanOldFiles()
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-        filetime = 0
-        while (testBit(trigger_flag, 2) != 0) and filetime <= TIMELAPSEPERIOD:
+        
+        while (testBit(trigger_flag, 2) != 0) and (int(time.time()) <= filetime):
             time.sleep(1)
-            filetime += 1
     camera.close()
     process_flag = clearBit(process_flag, 2)
     time.sleep(1)
@@ -448,13 +449,14 @@ if __name__ == "__main__":
     logging.debug(f"LOGPATH = {LOGPATH}")
     logging.debug(f"VIDEOPATH = {VIDEOPATH}")
     logging.debug(f"IMAGEPATH = {IMAGEPATH}")
+    logging.debug(f"IMAGEARCHIVEPATH = {IMAGEARCHIVEPATH}")
     logging.debug(f"WATCHPATH = {WATCHPATH}")
     logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
     logging.debug(f"FRAMEPS = {FRAMEPS}")
     logging.debug(f"QUALITY = {QUALITY}")
-    logging.debug(f"VIDEOLENGTH = {VIDEOLENGTH}")
-    logging.debug(f"TIMELAPSEPERIOD = {TIMELAPSEPERIOD}")
+    logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL}")
+    logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL}")
     logging.debug(f"STREAMPORT = {STREAMPORT}")
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
     logging.debug(f"ROTATION = {ROTATION}")
@@ -463,6 +465,7 @@ if __name__ == "__main__":
     logging.debug(f"AWBMODE = {AWBMODE}")
     logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
     logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
+    logging.debug(f"IMAGEARCHIVEPATHLIMIT = {IMAGEARCHIVEPATHLIMIT}MB")
     logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
     
