@@ -10,6 +10,7 @@ image +
     fanshim installed
     
 git clone
-    install onedrive service
-    install picamwatcher.service
-    reboot
+register onedrive
+install onedrive service
+install picamwatcher.service
+reboot
