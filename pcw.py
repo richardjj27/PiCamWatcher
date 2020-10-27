@@ -333,17 +333,16 @@ def picamstartrecord():
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
-    filetime = int(time.time())
+    #filetime = int(time.time())
     while (testBit(trigger_flag, 0) != 0):
-        filetime = (filetime + VIDEOINTERVAL)
+        filetime = int(time.time() / TIMELAPSEINTERVAL)
         CleanOldFiles()
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         camera.start_recording(VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
-    
-        while (testBit(trigger_flag, 0) != 0) and (int(time.time()) <= filetime):
+        while (testBit(trigger_flag, 0) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 camera.annotate_background = picamera.Color('black')
@@ -407,17 +406,16 @@ def picamstarttlapse():
     camera.awb_mode = AWBMODE
     videoprefix = "RPiT-"
 
-    filetime = int(time.time())
+    #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
-        filetime = (filetime + TIMELAPSEINTERVAL)
+        filetime = int(time.time() / TIMELAPSEINTERVAL)
         CleanOldFiles()
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-        
-        while (testBit(trigger_flag, 2) != 0) and (int(time.time()) <= filetime):
+        camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
+        while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             time.sleep(1)
     camera.close()
     process_flag = clearBit(process_flag, 2)
