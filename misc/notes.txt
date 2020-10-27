@@ -3,6 +3,7 @@ image +
     ssh
     certificate
     password
+    extend fs
     updates applied
     camera on
     i2c on
