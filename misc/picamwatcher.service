@@ -1,10 +1,13 @@
-# sudo nano /lib/systemd/system/picamwatcher.service
-# sudo chmod 644 /lib/systemd/system/picamwatcher.service
-# sudo systemctl daemon-reload
-# sudo systemctl enable picamwatcher.service
-# sudo reboot
-# sudo systemctl status picamwatcher.service
-# sudo journalctl --unit=picamwatcher.service -f
+#  sudo nano /lib/systemd/system/picamwatcher.service
+#  sudo chmod 644 /lib/systemd/system/picamwatcher.service
+#  sudo systemctl daemon-reload
+#  sudo systemctl enable picamwatcher.service
+## sudo systemctl disable picamwatcher.service
+#  sudo reboot
+#  sudo systemctl status picamwatcher.service
+## sudo systemctl stop picamwatcher.service
+## sudo systemctl start picamwatcher.service
+#  sudo journalctl --unit=picamwatcher.service -f
 
 [Unit]
 Description=PiCamWatcher Service

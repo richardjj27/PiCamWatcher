@@ -1,10 +1,13 @@
-# sudo nano /lib/systemd/system/onedrive.service
-# sudo chmod 644 /lib/systemd/system/onedrive.service
-# sudo systemctl daemon-reload
-# sudo systemctl enable onedrive.service
-# sudo reboot
-# sudo systemctl status onedrive.service
-# sudo journalctl --unit=onedrive.service -f
+#  sudo nano /lib/systemd/system/onedrive.service
+#  sudo chmod 644 /lib/systemd/system/onedrive.service
+#  sudo systemctl daemon-reload
+#  sudo systemctl enable onedrive.service
+## sudo systemctl disable onedrive.service
+#  sudo reboot
+#  sudo systemctl status onedrive.service
+## sudo systemctl stop onedrive.service
+## sudo systemctl start onedrive.service
+#  sudo journalctl --unit=onedrive.service -f
 
 [Unit]
 Description=OneDrive Service

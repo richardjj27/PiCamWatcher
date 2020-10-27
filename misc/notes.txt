@@ -1,0 +1,11 @@
+image +
+    wpa_supplicant
+    camera on
+    i2c on
+    updates applied
+    fanshim installed
+
+git clone
+    install onedrive service
+    install picamwatcher.service
+    reboot
