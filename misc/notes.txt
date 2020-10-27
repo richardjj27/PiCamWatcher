@@ -1,12 +1,13 @@
 image +
     wpa_supplicant
     ssh
+    certificate
+    updates applied
     camera on
     i2c on
     updates applied
     fanshim installed
-    certificate
-
+    
 git clone
     install onedrive service
     install picamwatcher.service
