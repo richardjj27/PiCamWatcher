@@ -2,6 +2,7 @@ image +
     wpa_supplicant
     ssh
     certificate
+    password
     updates applied
     camera on
     i2c on
