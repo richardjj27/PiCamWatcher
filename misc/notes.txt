@@ -1,5 +1,6 @@
 image +
     wpa_supplicant
+    ssh
     camera on
     i2c on
     updates applied
