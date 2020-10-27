@@ -7,7 +7,6 @@ image +
     updates applied
     camera on
     i2c on
-    updates applied
     fanshim installed
     
 git clone
