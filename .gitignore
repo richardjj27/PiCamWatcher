@@ -3,6 +3,6 @@ sync/PiCamWatcher/watch/*
 bin/refresh_token
 bin/item*
 video/*
-image/*
+image
 logs/*
 test.py
