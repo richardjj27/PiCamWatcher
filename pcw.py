@@ -91,7 +91,7 @@ FRAMEPS = 30
 ROTATION = 270 # Degrees of rotation to orient camera correctly.
 QUALITY = 20 # 1 is best, 40 is worst.
 
-VIDEOINTERVAL = 300 # Recorded videos will rotate at this number of seconds.
+VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes.
 TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds.
 STREAMPORT = 42687
 TIMESTAMP = True # Will a timestamp be put on photos and videos?
@@ -310,12 +310,12 @@ def silentremoveexcept(keeppath, keepfilename):
             silentremove(entry.path)
 
 def open_shutter():
-    if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
+    if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter open")
         os.system(RUNNINGPATH + "/bin/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
-    if(SHUTTEREXISTS is True) and (int(dt.datetime.now().strftime('%S')) % 5 == 3):
+    if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter closed")
         os.system(RUNNINGPATH + "/bin/shutter 0 >/dev/null 2>&1")
 
@@ -333,22 +333,26 @@ def picamstartrecord():
     camera.framerate = FRAMEPS
     videoprefix = "RPiR-"
 
+    # add a delay to ensure recording starts > 5 and < 55 to avoid clashing with the snapshot image.
+    while (int(time.time()) % 60 <= 5 or int(time.time()) % 60 >= 55):
+        time.sleep(5)
+
     #filetime = int(time.time())
     while (testBit(trigger_flag, 0) != 0):
-        filetime = int(time.time() / TIMELAPSEINTERVAL)
+        filetime = int(time.time() / (VIDEOINTERVAL * 60))
         CleanOldFiles()
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         camera.start_recording(VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
-        while (testBit(trigger_flag, 0) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
+        while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 camera.annotate_background = picamera.Color('black')
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
-            if(int(dt.datetime.now().strftime('%S')) % 60 == 0):
+            if((int(time.time()) % 60) == 0):
                 logging.info(f"Take Snapshot Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                 camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
@@ -454,10 +458,10 @@ if __name__ == "__main__":
     logging.debug(f"CONTRAST = {CONTRAST}")
     logging.debug(f"AWBMODE = {AWBMODE}")
     logging.debug(f"FRAMEPS = {FRAMEPS}")
-    logging.debug(f"ROTATION = {ROTATION}")
+    logging.debug(f"ROTATION = {ROTATION}°")
     logging.debug(f"QUALITY = {QUALITY}")
-    logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL}")
-    logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL}")
+    logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} mins")
+    logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
     logging.debug(f"STREAMPORT = {STREAMPORT}")
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
     logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
@@ -536,7 +540,7 @@ if __name__ == "__main__":
                 # Make sure nothing is running
                 close_shutter()
                 
-                if(int(dt.datetime.now().strftime('%S')) % 10 == 5):
+                if((int(time.time()) % 10) == 5):
                     logging.info(f"Waiting for something to do.")
           
                 if(testBit(trigger_flag, 0) != 0):
@@ -571,7 +575,7 @@ if __name__ == "__main__":
                 silentremove(WATCHPATH + "/pi-reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
        
-            if(int(dt.datetime.now().strftime('%S')) % 60 == 15):
+            if((int(time.time()) % 60) == 15):
                 # Log temperature every minute.
                 logging.info(f"Temperature = {CPUTemperature().temperature}°C")
 
