@@ -4,6 +4,7 @@ image +
     i2c on
     updates applied
     fanshim installed
+    certificate
 
 git clone
     install onedrive service
