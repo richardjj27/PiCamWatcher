@@ -3,4 +3,5 @@ bin/item*
 video
 image
 logs/*
+!logs/.gitkeep
 sync
