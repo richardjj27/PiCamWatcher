@@ -2,16 +2,24 @@ image +
     wpa_supplicant
     ssh
     certificate
-    password
+    set password
     extend fs
+    sudo apt install git wiringpi
+    sudo apt-get install wiringpi
+    git config --global user.email "richardjj627@gmail.com"
+    git config --global user.name "Richard Johnson"
     updates applied
     camera on
     i2c on
     fanshim installed
     
 git clone
-* delete known_ hosts in C:\Users\rjohnson\.ssh if vscode required
-* do the same in WSH2
+delete known_ hosts in C:\Users\rjohnson\.ssh if vscode required
+do the same in WSH2
+install and configure smb & share
+pip3 install watchdog
+pip3 install picamera
+pip3 install gpiozero
 register onedrive
 install onedrive service
 install picamwatcher.service

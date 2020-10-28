@@ -55,6 +55,7 @@
 #* Added an archive option for images (keep this sync'd file small for OneDrive)
 #* Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
 #* Tidy up contstants
+#* Now creates transient folders if they dont' already exist.
 
 import time
 import threading
@@ -75,12 +76,14 @@ import shutil
 import fnmatch
 from gpiozero import CPUTemperature
 
-RUNNINGPATH = "/home/pi/Github/PiCamWatcher/"
-LOGPATH = "/home/pi/Github/PiCamWatcher/logs/"
-VIDEOPATH = "/home/pi/Github/PiCamWatcher/video/"
-IMAGEPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/image/"
-IMAGEARCHIVEPATH = "/home/pi/Github/PiCamWatcher/image/"
-WATCHPATH = "/home/pi/Github/PiCamWatcher/sync/PiCamWatcher/watch/"
+RUNNINGPATH = "/home/pi/PiCamWatcher/"
+BINARYPATH = RUNNINGPATH + "bin/"
+LOGPATH = RUNNINGPATH + "logs/"
+
+VIDEOPATH = RUNNINGPATH + "video/"
+IMAGEPATH = RUNNINGPATH + "sync/PiCamWatcher/image/"
+IMAGEARCHIVEPATH = RUNNINGPATH + "image/"
+WATCHPATH = RUNNINGPATH + "sync/PiCamWatcher/watch/"
 
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
@@ -309,15 +312,22 @@ def silentremoveexcept(keeppath, keepfilename):
         if ((entry.name) != keepfilename and entry.name.startswith("pi-") and entry.is_file()):
             silentremove(entry.path)
 
+def createfolder(foldername):
+    try:
+        os.makedirs(foldername)
+        logging.info(f"Create Folder: {foldername}")
+    except:
+        pass
+
 def open_shutter():
     if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter open")
-        os.system(RUNNINGPATH + "/bin/shutter 99 >/dev/null 2>&1")
+        os.system(BINARYPATH + "shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
     if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter closed")
-        os.system(RUNNINGPATH + "/bin/shutter 0 >/dev/null 2>&1")
+        os.system(BINARYPATH + "shutter 0 >/dev/null 2>&1")
 
 def picamstartrecord():
     global trigger_flag
@@ -445,12 +455,21 @@ if __name__ == "__main__":
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
+    # Create any missing, transient folders
+    createfolder(VIDEOPATH)
+    createfolder(IMAGEPATH)
+    createfolder(IMAGEARCHIVEPATH)
+    createfolder(WATCHPATH)
+
     # Log the constants
     logging.debug(f"RUNNINGPATH = {RUNNINGPATH}")
+    logging.debug(f"BINARYPATH = {BINARYPATH}")
     logging.debug(f"LOGPATH = {LOGPATH}")
+    
     logging.debug(f"VIDEOPATH = {VIDEOPATH}")
     logging.debug(f"IMAGEPATH = {IMAGEPATH}")
     logging.debug(f"IMAGEARCHIVEPATH = {IMAGEARCHIVEPATH}")
+
     logging.debug(f"WATCHPATH = {WATCHPATH}")
     logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
     logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
@@ -460,9 +479,11 @@ if __name__ == "__main__":
     logging.debug(f"FRAMEPS = {FRAMEPS}")
     logging.debug(f"ROTATION = {ROTATION}°")
     logging.debug(f"QUALITY = {QUALITY}")
+
     logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} mins")
     logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
     logging.debug(f"STREAMPORT = {STREAMPORT}")
+
     logging.debug(f"TIMESTAMP = {TIMESTAMP}")
     logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
     logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
