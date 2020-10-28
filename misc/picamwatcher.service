@@ -16,8 +16,8 @@ After=multi-user.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/Github/PiCamWatcher
-ExecStart=/usr/bin/python3 /home/pi/Github/PiCamWatcher/pcw.py &> /dev/null
+WorkingDirectory=/home/pi/PiCamWatcher
+ExecStart=/usr/bin/python3 /home/pi/PiCamWatcher/pcw.py &> /dev/null
 Restart=on-failure
 
 [Install]
