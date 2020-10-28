@@ -9,7 +9,7 @@
 ## sudo systemctl stop onedrive.service
 ## sudo systemctl start onedrive.service
 #  sudo journalctl --unit=onedrive.service -f
-#ExecStart=/home/pi/PiCamWatcher/bin/onedrive --confdir /home/pi/PiCamWatcher/bin --syncdir /home/pi/Github/PiCamWatcher/sync/ --resync --monitor --monitor-interval 30 --disable-notifications --log-dir /home/pi/PiCamWatcher/logs/ --enable-logging
+#ExecStart=/home/pi/PiCamWatcher/bin/onedrive --confdir /home/pi/PiCamWatcher/bin --syncdir /home/pi/PiCamWatcher/sync/ --resync --monitor --monitor-interval 30 --disable-notifications --log-dir /home/pi/PiCamWatcher/logs/ --enable-logging
 
 [Unit]
 Description=OneDrive Service
