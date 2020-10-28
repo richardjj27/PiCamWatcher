@@ -5,3 +5,4 @@ image
 logs/*
 !logs/.gitkeep
 sync
+test.py
