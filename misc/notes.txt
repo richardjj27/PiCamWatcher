@@ -10,6 +10,8 @@ image +
     fanshim installed
     
 git clone
+* delete known_ hosts in C:\Users\rjohnson\.ssh if vscode required
+* do the same in WSH2
 register onedrive
 install onedrive service
 install picamwatcher.service
