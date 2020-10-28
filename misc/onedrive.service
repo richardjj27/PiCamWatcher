@@ -2,6 +2,7 @@
 #  sudo chmod 644 /lib/systemd/system/onedrive.service
 #  sudo systemctl daemon-reload
 #  sudo systemctl enable onedrive.service
+#  /home/pi/Github/PiCamWatcher/bin/onedrive --confdir /home/pi/Github/PiCamWatcher/bin
 ## sudo systemctl disable onedrive.service
 #  sudo reboot
 #  sudo systemctl status onedrive.service
