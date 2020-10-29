@@ -1,19 +1,15 @@
-# http://thepythoncorner.com/dev/how-to-create-a-watchdog-in-python-to-look-for-filesystem-changes/
-# sudo apt install python3-pip
-# python3 -m pip install watchdog
- 
-# Known Bugs and Issues
-#  Why does it take multiple ctrl-c clicks to exit?
+# Python Script to start and stop Pi Camera based on the existence of named trigger files.
+# https://github.com/richardjj27/PiCamWatcher
+
+#*  Added a function to allow for a ctrl-c to exit gracefully.
 
 # Testing Required:
 #  Check if any data is missed at file swapover and jpg snapshot time.
 #  Setting framerate to something other than 30 gets weird results.
 
 # Todo:
-#  Make it run as a service/startup - learn
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
-#  Add a 'zero' option to ignore archive/cleaning operations.
 #  Do some validity checks for constants.
 #  Do some bug testing basic checks.
 
@@ -56,6 +52,9 @@
 #* Make the timing between videos and images absolute rather than an arbitrary 'wait for' time period.
 #* Tidy up contstants
 #* Now creates transient folders if they dont' already exist.
+#* Make it run as a service/startup.  Howto in OneNote and sample .service files.
+#* Add a 'zero' option to ignore archive/cleaning operations. / solved by just setting image archive path to /dev/null
+#* Added a function to allow for a ctrl-c to exit gracefully.
 
 import time
 import threading
@@ -75,15 +74,17 @@ import datetime as dt
 import shutil
 import fnmatch
 from gpiozero import CPUTemperature
+from signal import signal, SIGINT
+from sys import exit
 
 RUNNINGPATH = "/home/pi/PiCamWatcher/"
 BINARYPATH = RUNNINGPATH + "bin/"
 LOGPATH = RUNNINGPATH + "logs/"
 
-VIDEOPATH = RUNNINGPATH + "video/"
-IMAGEPATH = RUNNINGPATH + "sync/PiCamWatcher/image/"
-IMAGEARCHIVEPATH = RUNNINGPATH + "image/"
-WATCHPATH = RUNNINGPATH + "sync/PiCamWatcher/watch/"
+VIDEOPATH = "/home/pi/PiCamWatcher/video/"
+IMAGEPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/image/"
+IMAGEARCHIVEPATH = "null"
+WATCHPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/watch/"
 
 RESOLUTIONX = 1600
 RESOLUTIONY = 1200
@@ -215,18 +216,22 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "RPi*.*")
             full_path = [IMAGEPATH + "{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+            if(IMAGEARCHIVEPATH.lower() != "null"):
+                silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+            else:
+                silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
 
     # clean archive image files (based on folder size) > trash
-    imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
-    if(imageusedspace > IMAGEARCHIVEPATHLIMIT):
-        while (imageusedspace > IMAGEARCHIVEPATHLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
-            full_path = [IMAGEARCHIVEPATH + "{0}".format(x) for x in list_of_files]
-            oldest_file = min(full_path, key=os.path.getctime)
-            silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
-            imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
+    if(IMAGEARCHIVEPATH.lower() != "null"):
+        imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
+        if(imageusedspace > IMAGEARCHIVEPATHLIMIT):
+            while (imageusedspace > IMAGEARCHIVEPATHLIMIT):
+                list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
+                full_path = [IMAGEARCHIVEPATH + "{0}".format(x) for x in list_of_files]
+                oldest_file = min(full_path, key=os.path.getctime)
+                silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+                imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
 
 def testBit(int_type, offset):
     # testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.
@@ -294,6 +299,7 @@ def silentremove(filename, message = ""):
     try:
         time.sleep(.5)
         logging.info(f"Deleting: {filename}{message}")
+        
         os.remove(filename)
     except:
         pass
@@ -407,6 +413,11 @@ def picamstartstream():
             camera.stop_recording()
             process_flag = clearBit(process_flag, 1)
 
+def handler(signal_received, frame):
+    # Handle any cleanup here
+    logging.info("Exiting gracefully")
+    os._exit(1)
+
 def picamstarttlapse():
     global trigger_flag
     global process_flag
@@ -447,6 +458,9 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
+    # Intercept Ctrl-C to gracefully exit
+    signal(SIGINT, handler)
+
     # Setup logging (quiet background)
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "picamwatcher.log", filemode='w')
     console = logging.StreamHandler()
@@ -458,7 +472,8 @@ if __name__ == "__main__":
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
     createfolder(IMAGEPATH)
-    createfolder(IMAGEARCHIVEPATH)
+    if(IMAGEARCHIVEPATH.lower() != "null"):
+        createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
 
     # Log the constants
