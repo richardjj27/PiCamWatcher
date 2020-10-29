@@ -1,8 +1,6 @@
 # Python Script to start and stop Pi Camera based on the existence of named trigger files.
 # https://github.com/richardjj27/PiCamWatcher
 
-#*  Added a function to allow for a ctrl-c to exit gracefully.
-
 # Testing Required:
 #  Check if any data is missed at file swapover and jpg snapshot time.
 #  Setting framerate to something other than 30 gets weird results.
@@ -11,7 +9,6 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Do some validity checks for constants.
-#  Do some bug testing basic checks.
 
 # Done:
 #* Put some file rotation login in
@@ -86,25 +83,25 @@ IMAGEPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/image/"
 IMAGEARCHIVEPATH = "null"
 WATCHPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/watch/"
 
-RESOLUTIONX = 1600
-RESOLUTIONY = 1200
-BRIGHTNESS = 50
-CONTRAST = 0
-AWBMODE = "auto"
-FRAMEPS = 30
-ROTATION = 270 # Degrees of rotation to orient camera correctly.
-QUALITY = 20 # 1 is best, 40 is worst.
+RESOLUTIONX = 1600 # [<= 1920]
+RESOLUTIONY = 1200 # [<= 1200]
+BRIGHTNESS = 50 # [0 > 100]
+CONTRAST = 0 # [-100 > +100]
+AWBMODE = "auto" # 'off','auto','sunlight','cloudy','shade','tungsten','fluorescent','incandescent','flash','horizon'
+FRAMEPS = 30 # [0-60]
+ROTATION = 270 # Degrees of rotation to orient camera correctly. [0,90,180,270]
+QUALITY = 20 # 1 is best, 40 is worst. [1-40]
 
-VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes.
-TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds.
-STREAMPORT = 42687
-TIMESTAMP = True # Will a timestamp be put on photos and videos?
+VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes. # [<= 30]
+TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds. [>=5, [=30]]
+STREAMPORT = 42687 # [> 30000, <=65535]
+TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
 
-VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted.
-IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH
-IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted.
-TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file.
-SHUTTEREXISTS = True # Does the camera have a shutter which needs opening?
+VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted. [>=1024]
+IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
+IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>64]
+TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file. [True or False]
+SHUTTEREXISTS = True # Does the camera have a shutter which needs opening? [True or False]
 
 trigger_flag = int('000000000000', 2)
 process_flag = int('000000000000', 2)
