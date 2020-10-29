@@ -74,31 +74,31 @@ from gpiozero import CPUTemperature
 from signal import signal, SIGINT
 from sys import exit
 
-RUNNINGPATH = "/home/pi/PiCamWatcher/"
-BINARYPATH = RUNNINGPATH + "bin/"
-LOGPATH = RUNNINGPATH + "logs/"
+RUNNINGPATH = "/home/pi/PiCamWatcher/" # Real path
+BINARYPATH = RUNNINGPATH + "bin/" # Real path
+LOGPATH = RUNNINGPATH + "logs/" # Real path
 
-VIDEOPATH = "/home/pi/PiCamWatcher/video/"
-IMAGEPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/image/"
-IMAGEARCHIVEPATH = "null"
-WATCHPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/watch/"
+VIDEOPATH = "/home/pi/PiCamWatcher/video/" # Real path
+IMAGEPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/image/" # Real path
+IMAGEARCHIVEPATH = "null" # Real path or null
+WATCHPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/watch/" # Real path
 
 RESOLUTIONX = 1600 # [<= 1920]
 RESOLUTIONY = 1200 # [<= 1200]
-BRIGHTNESS = 50 # [0 > 100]
+BRIGHTNESS = 50 # [1 > 100]
 CONTRAST = 0 # [-100 > +100]
 AWBMODE = "auto" # 'off','auto','sunlight','cloudy','shade','tungsten','fluorescent','incandescent','flash','horizon'
 FRAMEPS = 30 # [0-60]
-ROTATION = 270 # Degrees of rotation to orient camera correctly. [0,90,180,270]
+ROTATION = 0 # Degrees of rotation to orient camera correctly. [0,90,180,270]
 QUALITY = 20 # 1 is best, 40 is worst. [1-40]
 
 VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes. # [<= 30]
-TIMELAPSEINTERVAL = 30 # Timelapse JPGs will be taken at this number of seconds. [>=5, [=30]]
-STREAMPORT = 42687 # [> 30000, <=65535]
+TIMELAPSEINTERVAL = 5 # Timelapse JPGs will be taken at this number of seconds. [>=5, [=30]]
+STREAMPORT = 42687 # [>= 30000, <=65535]
 TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
 
 VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted. [>=1024]
-IMAGEPATHLIMIT = 512 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
+IMAGEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
 IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>64]
 TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file. [True or False]
 SHUTTEREXISTS = True # Does the camera have a shutter which needs opening? [True or False]
@@ -294,23 +294,19 @@ def on_deleted(event):
 
 def silentremove(filename, message = ""):
     try:
-        time.sleep(.5)
         logging.info(f"Deleting: {filename}{message}")
-        
         os.remove(filename)
     except:
         pass
 
 def silentmove(filename, destination, message = ""):
     try:
-        time.sleep(.5)
         logging.info(f"Archiving: {filename}{message}")
         shutil.move(filename, destination)
     except:
         pass
 
 def silentremoveexcept(keeppath, keepfilename):
-    # put some code here
     for entry in os.scandir(keeppath):
         if ((entry.name) != keepfilename and entry.name.startswith("pi-") and entry.is_file()):
             silentremove(entry.path)
