@@ -73,27 +73,29 @@ import fnmatch
 from gpiozero import CPUTemperature
 from signal import signal, SIGINT
 from sys import exit
+import configparser
 
-RUNNINGPATH = "/home/pi/PiCamWatcher/" # Real path
-BINARYPATH = RUNNINGPATH + "bin/" # Real path
-LOGPATH = RUNNINGPATH + "logs/" # Real path
 
-VIDEOPATH = "/home/pi/PiCamWatcher/video/" # Real path
-IMAGEPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/image/" # Real path
-IMAGEARCHIVEPATH = "null" # Real path or null
-WATCHPATH = "/home/pi/PiCamWatcher/sync/PiCamWatcher/watch/" # Real path
+RUNNINGPATH = "./" # Real path
+LOGPATH = "./logs/" # Real path
+BINARYPATH = "./bin/" # Real path
+
+VIDEOPATH = "/media/usb/video/" # Real path
+IMAGEPATH = "/media/usb/picamsync/image/" # Real path
+IMAGEARCHIVEPATH = "/media/usb/imagearchive/" # Real path or null
+WATCHPATH = "/media/usb/picamsync/watch/" # Real path
 
 RESOLUTIONX = 1600 # [<= 1920]
 RESOLUTIONY = 1200 # [<= 1200]
 BRIGHTNESS = 50 # [1 > 100]
 CONTRAST = 0 # [-100 > +100]
 AWBMODE = "auto" # 'off','auto','sunlight','cloudy','shade','tungsten','fluorescent','incandescent','flash','horizon'
-FRAMEPS = 30 # [0-60]
+FRAMEPS = 30 # [1-60]
 ROTATION = 0 # Degrees of rotation to orient camera correctly. [0,90,180,270]
 QUALITY = 20 # 1 is best, 40 is worst. [1-40]
 
 VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes. # [<= 30]
-TIMELAPSEINTERVAL = 5 # Timelapse JPGs will be taken at this number of seconds. [>=5, [=30]]
+TIMELAPSEINTERVAL = 1 # Timelapse JPGs will be taken at this number of seconds. [>=5, [<=30]]
 STREAMPORT = 42687 # [>= 30000, <=65535]
 TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
 
@@ -434,7 +436,7 @@ def picamstarttlapse():
         logging.info(f"Take Timelapse Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
-            time.sleep(1)
+            time.sleep(.5)
     camera.close()
     process_flag = clearBit(process_flag, 2)
     time.sleep(1)
