@@ -76,14 +76,14 @@ from sys import exit
 import configparser
 
 
-RUNNINGPATH = "./" # Real path
-LOGPATH = "./logs/" # Real path
-BINARYPATH = "./bin/" # Real path
+RUNNINGPATH = "." # Real path
+LOGPATH = "./logs" # Real path
+BINARYPATH = "./bin" # Real path
 
-VIDEOPATH = "/media/usb/video/" # Real path
-IMAGEPATH = "/media/usb/picamsync/image/" # Real path
-IMAGEARCHIVEPATH = "/media/usb/imagearchive/" # Real path or null
-WATCHPATH = "/media/usb/picamsync/watch/" # Real path
+VIDEOPATH = "/media/usb/video" # Real path
+IMAGEPATH = "/media/usb/picamsync/image" # Real path
+IMAGEARCHIVEPATH = "/media/usb/imagearchive" # Real path or null
+WATCHPATH = "/media/usb/picamsync/watch" # Real path
 
 RESOLUTIONX = 1600 # [<= 1920]
 RESOLUTIONY = 1200 # [<= 1200]
@@ -202,8 +202,8 @@ def CleanOldFiles():
     # clean video files (based on free space) > trash
     if(freespace < VIDEOPATHFSLIMIT):
         while (freespace < VIDEOPATHFSLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPiR-*.*")
-            full_path = [VIDEOPATH + "{0}".format(x) for x in list_of_files]
+            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "/RPiR-*.*")
+            full_path = [VIDEOPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             silentremove(oldest_file, " / Free Space: " + ('{:.2f}'.format(freespace)) + "MB")
             freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
@@ -212,8 +212,8 @@ def CleanOldFiles():
     imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
     if(imageusedspace > IMAGEPATHLIMIT):
         while (imageusedspace > IMAGEPATHLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "RPi*.*")
-            full_path = [IMAGEPATH + "{0}".format(x) for x in list_of_files]
+            list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "/RPi*.*")
+            full_path = [IMAGEPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             if(IMAGEARCHIVEPATH.lower() != "null"):
                 silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
@@ -227,7 +227,7 @@ def CleanOldFiles():
         if(imageusedspace > IMAGEARCHIVEPATHLIMIT):
             while (imageusedspace > IMAGEARCHIVEPATHLIMIT):
                 list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
-                full_path = [IMAGEARCHIVEPATH + "{0}".format(x) for x in list_of_files]
+                full_path = [IMAGEARCHIVEPATH + "/{0}".format(x) for x in list_of_files]
                 oldest_file = min(full_path, key=os.path.getctime)
                 silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
                 imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
@@ -323,12 +323,12 @@ def createfolder(foldername):
 def open_shutter():
     if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter open")
-        os.system(BINARYPATH + "shutter 99 >/dev/null 2>&1")
+        os.system(BINARYPATH + "/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
     if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
         # logging.info("shutter closed")
-        os.system(BINARYPATH + "shutter 0 >/dev/null 2>&1")
+        os.system(BINARYPATH + "/shutter 0 >/dev/null 2>&1")
 
 def picamstartrecord():
     global trigger_flag
@@ -355,8 +355,8 @@ def picamstartrecord():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        camera.start_recording(VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {VIDEOPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
+        camera.start_recording(VIDEOPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
+        logging.info(f"Recording: {VIDEOPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             if(TAKESNAPSHOT is True):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -364,8 +364,8 @@ def picamstartrecord():
             time.sleep(1)
             # Take a snapshot jpg every minute(ish)
             if((int(time.time()) % 60) == 0):
-                logging.info(f"Take Snapshot Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-                camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+                logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
     camera.close()
     process_flag = clearBit(process_flag, 0)
@@ -433,8 +433,8 @@ def picamstarttlapse():
         if(TIMESTAMP is True):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
-        logging.info(f"Take Timelapse Image : {IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        camera.capture(IMAGEPATH + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
+        logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             time.sleep(.5)
     camera.close()
@@ -457,7 +457,7 @@ if __name__ == "__main__":
     signal(SIGINT, handler)
 
     # Setup logging (quiet background)
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "picamwatcher.log", filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "/picamwatcher.log", filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
@@ -502,15 +502,15 @@ if __name__ == "__main__":
     logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
 
     # Set initial state if (single or multiple) files exist.
-    if(path.exists(WATCHPATH + "pi-record") is True):
+    if(path.exists(WATCHPATH + "/pi-record") is True):
         trigger_flag = setBit(trigger_flag, 0)
         silentremoveexcept(WATCHPATH, "pi-record")
 
-    elif(path.exists(WATCHPATH + "pi-stream") is True):
+    elif(path.exists(WATCHPATH + "/pi-stream") is True):
         trigger_flag = setBit(trigger_flag, 1)
         silentremoveexcept(WATCHPATH, "pi-stream")
 
-    elif(path.exists(WATCHPATH + "pi-tlapse") is True):
+    elif(path.exists(WATCHPATH + "/pi-tlapse") is True):
         trigger_flag = setBit(trigger_flag, 2)
         silentremoveexcept(WATCHPATH, "pi-tlapse")
 
@@ -548,7 +548,6 @@ if __name__ == "__main__":
                 #stream_thread.join()                
                 logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 stream_thread = threading.Thread(target = picamstartstream)   
-
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
                 trigger_flag = clearBit(trigger_flag, 5)
