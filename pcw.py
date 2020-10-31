@@ -8,7 +8,6 @@
 # Todo:
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
-#  Do some validity checks for constants.
 
 # Done:
 #* Put some file rotation login in
@@ -52,6 +51,9 @@
 #* Make it run as a service/startup.  Howto in OneNote and sample .service files.
 #* Add a 'zero' option to ignore archive/cleaning operations. / solved by just setting image archive path to /dev/null
 #* Added a function to allow for a ctrl-c to exit gracefully.
+#  Do some validity checks for constants.
+#  Moved constants to config file.
+#  Added the ability to override constants from withint pi-*** files.
 
 import time
 import threading
@@ -74,56 +76,38 @@ from gpiozero import CPUTemperature
 from signal import signal, SIGINT
 from sys import exit
 import configparser
+import re
 
+global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH,IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH
+global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
+global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
+global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT
+global SHUTTEREXISTS
 
-RUNNINGPATH = "." # Real path
-LOGPATH = "./logs" # Real path
-BINARYPATH = "./bin" # Real path
+# VIDEOPATH = "/media/usb/video"
+# IMAGEPATH = "/media/usb/picamsync/image"
+# IMAGEARCHIVEPATH = "/media/usb/imagearchive" # Real path or 'null'
+# WATCHPATH = "/media/usb/picamsync/watch" # Real path
 
-VIDEOPATH = "/media/usb/video" # Real path
-IMAGEPATH = "/media/usb/picamsync/image" # Real path
-IMAGEARCHIVEPATH = "/media/usb/imagearchive" # Real path or null
-WATCHPATH = "/media/usb/picamsync/watch" # Real path
+# RESOLUTIONX = 1600 # [<= 1920]
+# RESOLUTIONY = 1200 # [<= 1200]
+# BRIGHTNESS = 50 # [1 > 100]
+# CONTRAST = 0 # [-100 > +100]
+# AWBMODE = "auto" # 'off','auto','sunlight','cloudy','shade','tungsten','fluorescent','incandescent','flash','horizon'
+# FRAMEPS = 30 # [1-60]
+# ROTATION = 0 # Degrees of rotation to orient camera correctly. [0,90,180,270]
+# QUALITY = 20 # 1 is best, 40 is worst. [1-40]
 
-RESOLUTIONX = 1600 # [<= 1920]
-RESOLUTIONY = 1200 # [<= 1200]
-BRIGHTNESS = 50 # [1 > 100]
-CONTRAST = 0 # [-100 > +100]
-AWBMODE = "auto" # 'off','auto','sunlight','cloudy','shade','tungsten','fluorescent','incandescent','flash','horizon'
-FRAMEPS = 30 # [1-60]
-ROTATION = 0 # Degrees of rotation to orient camera correctly. [0,90,180,270]
-QUALITY = 20 # 1 is best, 40 is worst. [1-40]
+# VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes. # [<= 30]
+# TIMELAPSEINTERVAL = 1 # Timelapse JPGs will be taken at this number of seconds. [>=5, [<=30]]
+# STREAMPORT = 42687 # [>= 30000, <=65535]
+# TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
 
-VIDEOINTERVAL = 5 # Recorded videos will rotate at this number of minutes. # [<= 30]
-TIMELAPSEINTERVAL = 1 # Timelapse JPGs will be taken at this number of seconds. [>=5, [<=30]]
-STREAMPORT = 42687 # [>= 30000, <=65535]
-TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
-
-VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted. [>=1024]
-IMAGEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
-IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>64]
-TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file. [True or False]
-SHUTTEREXISTS = True # Does the camera have a shutter which needs opening? [True or False]
-
-trigger_flag = int('000000000000', 2)
-process_flag = int('000000000000', 2)
-
-# trigger_flag  9876543210
-# PI-RECORD     0000000001
-# PI-STREAM     0000000010
-# PI-TLAPSE     0000000100
-# PI-STOPRECORD 0000001000
-# PI-STOPSTREAM 0000010000
-# PI-STOPTLAPSE 0000100000
-# PI-STOPALL    0001000000
-# PI-STOPSCRIPT 0010000000
-# PI-REBOOT     0100000000
-
-# process_flag  9876543210
-# Idle          0000000000
-# Recording     0000000001
-# Streaming     0000000010
-# Timelapsing   0000000100
+# VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted. [>=1024]
+# IMAGEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
+# IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>64]
+# TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file. [True or False]
+# SHUTTEREXISTS = True # Does the camera have a shutter which needs opening? [True or False]
 
 PAGE="""\
 <html>
@@ -252,46 +236,117 @@ def toggleBit(int_type, offset):
     mask = 1 << offset
     return(int_type ^ mask)
 
+def read_config(config_file, section, item, rule, default, retain = ""):
+    # Function to read a line from a config file and validate against a stated regular expression.
+    # http://gamon.webfactional.com/regexnumericrangegenerator/
+    
+    config = configparser.ConfigParser()
+    pattern = re.compile(rule)
+
+    config.read(config_file)
+
+    try:
+        input = config[section][item]
+        if(pattern.match(input)):
+            output = input
+        elif(default == "terminate"):
+            os._exit(1)
+        else:
+            output = default
+    except:
+        if(default == "retain"):
+            output = retain
+        else:
+            output = default
+
+    # if the value is new or has changed, log it.
+    if(output != retain):
+        logging.debug(f"{item} = {output}")
+    return output
+
 def on_created(event):
     global trigger_flag
-    if "pi-record" in event.src_path:
+    global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
+    global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
+
+    # check for constants changed in new trigger file.
+
+    src_filename = os.path.basename(event.src_path)
+    print(event.src_path)
+    print(src_filename)
+
+    if ("pi-record" == src_filename) or ("pi-stream" == src_filename) or ("pi-tlapse" == src_filename):
+        print("override")
+
+        RESOLUTIONX = int(read_config(event.src_path, "CAMERA", "RESOLUTIONX", "^(6[4-8][0-9]|69[0-9]|[7-9][0-9]{2}|1[0-8][0-9]{2}|19[01][0-9]|1920)$", "retain", RESOLUTIONX)) # 640 > 1920
+        RESOLUTIONY = int(read_config(event.src_path, "CAMERA", "RESOLUTIONY", "^(48[0-9]|49[0-9]|[5-9][0-9]{2}|1[0-5][0-9]{2}|1600)$", "retain", RESOLUTIONY)) # 480 > 1600
+        BRIGHTNESS = int(read_config(event.src_path, "CAMERA", "BRIGHTNESS", "^([1-9]|[1-8][0-9]|9[0-9]|100)$", "retain", BRIGHTNESS)) # 1 > 100
+        CONTRAST = int(read_config(event.src_path, "CAMERA", "CONTRAST", "^-?([0-9]|[1-8][0-9]|9[0-9]|100)$", "retain", CONTRAST)) # -100 > +100
+        AWBMODE = read_config(event.src_path, "CAMERA", "AWBMODE", "(?:^|(?<= ))(off|auto|sunlight|cloudy|shade|tungsten|fluorescent|incandescent|flash|horizon)(?:(?= )|$)", "retain", AWBMODE) # off|auto|sunlight|cloudy|shade|tungsten|fluorescent|incandescent|flash|horizon
+        FRAMEPS = int(read_config(event.src_path, "CAMERA", "FRAMEPS", "^([1-9]|[1-5][0-9]|60)$", "retain", FRAMEPS)) # 1 > 60
+        ROTATION = int(read_config(event.src_path, "CAMERA", "ROTATION", "(?:^|(?<= ))(0|90|180|270)(?:(?= )|$)", "retain", ROTATION)) # 0|90|180|270
+        QUALITY = int(read_config(event.src_path, "CAMERA", "QUALITY", "^([1-9]|[1-3][0-9]|40)$", "retain", QUALITY)) # 1 > 40
+
+        VIDEOINTERVAL = int(read_config(event.src_path, "OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "retain", VIDEOINTERVAL)) # 1 > 30
+        TIMELAPSEINTERVAL = int(read_config(event.src_path, "OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", TIMELAPSEINTERVAL)) # 5 > 30
+        STREAMPORT = int(read_config(event.src_path, "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT)) # 30000 > 65535
+        TIMESTAMP = read_config(event.src_path, "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
+
+        # logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
+        # logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
+        # logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
+        # logging.debug(f"CONTRAST = {CONTRAST}")
+        # logging.debug(f"AWBMODE = {AWBMODE}")
+        # logging.debug(f"FRAMEPS = {FRAMEPS}")
+        # logging.debug(f"ROTATION = {ROTATION}°")
+        # logging.debug(f"QUALITY = {QUALITY}")
+
+        # logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} minutes")
+        # logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
+        # logging.debug(f"STREAMPORT = {STREAMPORT}")
+        # logging.debug(f"TIMESTAMP = {TIMESTAMP}")
+        # print(event.src_path + "xxx")
+
+    if "pi-record" == src_filename:
         silentremoveexcept(WATCHPATH, "pi-record")
         trigger_flag = setBit(trigger_flag, 0)
-    if "pi-stream" in event.src_path:
+    if "pi-stream" == src_filename:
         silentremoveexcept(WATCHPATH, "pi-stream")
         trigger_flag = setBit(trigger_flag, 1)
-    if "pi-tlapse" in event.src_path:
+    if "pi-tlapse" == src_filename:
         silentremoveexcept(WATCHPATH, "pi-tlapse")
         trigger_flag = setBit(trigger_flag, 2)
-    if "pi-stoprecord" in event.src_path:
+    if "pi-stoprecord" == src_filename:
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-record")
-    if "pi-stopstream" in event.src_path:
+    if "pi-stopstream" == src_filename:
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-stream")
-    if "pi-stoptlapse" in event.src_path:
+    if "pi-stoptlapse" == src_filename:
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-tlapse")
-    if "pi-stopall" in event.src_path:
+    if "pi-stopall" == src_filename:
         trigger_flag = setBit(trigger_flag, 6)
         silentremove(event.src_path)
         silentremove(WATCHPATH + "pi-record")
         silentremove(WATCHPATH + "pi-stream")
         silentremove(WATCHPATH + "pi-tlapse")
-    if "pi-stopscript" in event.src_path:
+    if "pi-stopscript" == src_filename:
         trigger_flag = setBit(trigger_flag, 7)
         silentremove(event.src_path)
-    if "pi-reboot" in event.src_path:
+    if "pi-reboot" == src_filename:
         trigger_flag = setBit(trigger_flag, 8)
         silentremove(event.src_path)
 
 def on_deleted(event):
     global trigger_flag
-    if "pi-record" in event.src_path:
+    src_filename = os.path.basename(event.src_path)
+    
+    if "pi-record" == src_filename:
         trigger_flag = setBit(trigger_flag, 3)
-    if "pi-stream" in event.src_path:
+    if "pi-stream" == src_filename:
         trigger_flag = setBit(trigger_flag, 4)
-    if "pi-tlapse" in event.src_path:
+    if "pi-tlapse" == src_filename:
         trigger_flag = setBit(trigger_flag, 5)
 
 def silentremove(filename, message = ""):
@@ -442,16 +497,13 @@ def picamstarttlapse():
     time.sleep(1)
 
 if __name__ == "__main__":
-    # Create file system watcher.
-    patterns = "*"
-    ignore_patterns = ""
-    ignore_directories = True
-    case_sensitive = False
-    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
-    my_event_handler.on_created = on_created
-    my_event_handler.on_deleted = on_deleted
-    my_observer = Observer()
-    my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
+    
+    # Get constants from ini file.
+    
+    RUNNINGPATH = "."
+    LOGPATH = "./logs"
+    BINARYPATH = "./bin"
+    CONFIG_FILE = "./pcw.ini"
 
     # Intercept Ctrl-C to gracefully exit
     signal(SIGINT, handler)
@@ -464,6 +516,71 @@ if __name__ == "__main__":
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
+    logging.debug(f"RUNNINGPATH = {RUNNINGPATH}")
+    logging.debug(f"LOGPATH = {LOGPATH}")
+    logging.debug(f"BINARYPATH = {BINARYPATH}")
+    logging.debug(f"CONFIG_FILE = {CONFIG_FILE}")
+
+    VIDEOPATH = read_config(CONFIG_FILE,"PATH", "VIDEOPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
+    IMAGEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
+    IMAGEARCHIVEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEARCHIVEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash (or null)
+    WATCHPATH = read_config(CONFIG_FILE,"PATH", "WATCHPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
+
+    RESOLUTIONX = int(read_config(CONFIG_FILE,"CAMERA", "RESOLUTIONX", "^(6[4-8][0-9]|69[0-9]|[7-9][0-9]{2}|1[0-8][0-9]{2}|19[01][0-9]|1920)$", "800")) # 640 > 1920
+    RESOLUTIONY = int(read_config(CONFIG_FILE,"CAMERA", "RESOLUTIONY", "^(48[0-9]|49[0-9]|[5-9][0-9]{2}|1[0-5][0-9]{2}|1600)$", "480")) # 480 > 1600
+    BRIGHTNESS = int(read_config(CONFIG_FILE,"CAMERA", "BRIGHTNESS", "^([1-9]|[1-8][0-9]|9[0-9]|100)$", "50")) # 1 > 100
+    CONTRAST = int(read_config(CONFIG_FILE,"CAMERA", "CONTRAST", "^-?([0-9]|[1-8][0-9]|9[0-9]|100)$", "0")) # -100 > +100
+    AWBMODE = read_config(CONFIG_FILE,"CAMERA", "AWBMODE", "(?:^|(?<= ))(off|auto|sunlight|cloudy|shade|tungsten|fluorescent|incandescent|flash|horizon)(?:(?= )|$)", "auto") # off|auto|sunlight|cloudy|shade|tungsten|fluorescent|incandescent|flash|horizon
+    FRAMEPS = int(read_config(CONFIG_FILE,"CAMERA", "FRAMEPS", "^([1-9]|[1-5][0-9]|60)$", "30")) # 1 > 60
+    ROTATION = int(read_config(CONFIG_FILE,"CAMERA", "ROTATION", "(?:^|(?<= ))(0|90|180|270)(?:(?= )|$)", "0")) # 0|90|180|270
+    QUALITY = int(read_config(CONFIG_FILE,"CAMERA", "QUALITY", "^([1-9]|[1-3][0-9]|40)$", "20")) # 1 > 40
+
+    VIDEOINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "30")) # 1 > 30
+    TIMELAPSEINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
+    STREAMPORT =  int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
+    TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+
+    VIDEOPATHFSLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "VIDEOPATHFSLIMIT", "x", "10240")) # 1024+
+    IMAGEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEPATHLIMIT", "x", "2048")) # 64+
+    IMAGEARCHIVEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEARCHIVEPATHLIMIT", "x", "2048")) # 64+ 
+    TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+
+    SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+
+    trigger_flag = int('000000000000', 2)
+    process_flag = int('000000000000', 2)
+
+    # trigger_flag  9876543210
+    # PI-RECORD     0000000001
+    # PI-STREAM     0000000010
+    # PI-TLAPSE     0000000100
+    # PI-STOPRECORD 0000001000
+    # PI-STOPSTREAM 0000010000
+    # PI-STOPTLAPSE 0000100000
+    # PI-STOPALL    0001000000
+    # PI-STOPSCRIPT 0010000000
+    # PI-REBOOT     0100000000
+
+    # process_flag  9876543210
+    # Idle          0000000000
+    # Recording     0000000001
+    # Streaming     0000000010
+    # Timelapsing   0000000100
+    
+    
+    
+    
+    # Create file system watcher.
+    patterns = "*"
+    ignore_patterns = ""
+    ignore_directories = True
+    case_sensitive = False
+    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+    my_event_handler.on_created = on_created
+    my_event_handler.on_deleted = on_deleted
+    my_observer = Observer()
+    my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
+
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
     createfolder(IMAGEPATH)
@@ -472,34 +589,32 @@ if __name__ == "__main__":
     createfolder(WATCHPATH)
 
     # Log the constants
-    logging.debug(f"RUNNINGPATH = {RUNNINGPATH}")
-    logging.debug(f"BINARYPATH = {BINARYPATH}")
-    logging.debug(f"LOGPATH = {LOGPATH}")
-    
-    logging.debug(f"VIDEOPATH = {VIDEOPATH}")
-    logging.debug(f"IMAGEPATH = {IMAGEPATH}")
-    logging.debug(f"IMAGEARCHIVEPATH = {IMAGEARCHIVEPATH}")
 
-    logging.debug(f"WATCHPATH = {WATCHPATH}")
-    logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
-    logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
-    logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
-    logging.debug(f"CONTRAST = {CONTRAST}")
-    logging.debug(f"AWBMODE = {AWBMODE}")
-    logging.debug(f"FRAMEPS = {FRAMEPS}")
-    logging.debug(f"ROTATION = {ROTATION}°")
-    logging.debug(f"QUALITY = {QUALITY}")
+    # Log the constants
+    # logging.debug(f"VIDEOPATH = {VIDEOPATH}")
+    # logging.debug(f"IMAGEPATH = {IMAGEPATH}")
+    # logging.debug(f"IMAGEARCHIVEPATH = {IMAGEARCHIVEPATH}")
+    # logging.debug(f"WATCHPATH = {WATCHPATH}")
 
-    logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} mins")
-    logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
-    logging.debug(f"STREAMPORT = {STREAMPORT}")
+    # logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
+    # logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
+    # logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
+    # logging.debug(f"CONTRAST = {CONTRAST}")
+    # logging.debug(f"AWBMODE = {AWBMODE}")
+    # logging.debug(f"FRAMEPS = {FRAMEPS}")
+    # logging.debug(f"ROTATION = {ROTATION}°")
+    # logging.debug(f"QUALITY = {QUALITY}")
 
-    logging.debug(f"TIMESTAMP = {TIMESTAMP}")
-    logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT}MB")
-    logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
-    logging.debug(f"IMAGEARCHIVEPATHLIMIT = {IMAGEARCHIVEPATHLIMIT}MB")
-    logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
-    logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
+    # logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} minutes")
+    # logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
+    # logging.debug(f"STREAMPORT = {STREAMPORT}")
+    # logging.debug(f"TIMESTAMP = {TIMESTAMP}")
+
+    # logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT} MB")
+    # logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
+    # logging.debug(f"IMAGEARCHIVEPATHLIMIT = {IMAGEARCHIVEPATHLIMIT} MB")
+    # logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
+    # logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
 
     # Set initial state if (single or multiple) files exist.
     if(path.exists(WATCHPATH + "/pi-record") is True):
@@ -607,7 +722,7 @@ if __name__ == "__main__":
        
             if((int(time.time()) % 60) == 15):
                 # Log temperature every minute.
-                logging.info(f"Temperature = {CPUTemperature().temperature}°C")
+                logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
 
             time.sleep(1)
 

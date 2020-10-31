@@ -5,6 +5,7 @@ import configparser
 import re
 
 def read_config(config_file, section, item, rule, default, retain = ""):
+    # Function to read a line from a config file and validate against a stated regular expression.
     # http://gamon.webfactional.com/regexnumericrangegenerator/
     
     config = configparser.ConfigParser()
@@ -25,7 +26,6 @@ def read_config(config_file, section, item, rule, default, retain = ""):
             output = retain
         else:
             output = default
-
     return output
 
 def read_constants(config_file):
@@ -150,3 +150,5 @@ TIMELAPSEINTERVAL = read_config("extra.ini", "OUTPUT", "TIMELAPSEINTERVAL", "^([
 STREAMPORT =  read_config("extra.ini", "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT) # 30000 > 65535
 TIMESTAMP =  read_config("extra.ini", "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
 logging.debug(f"VIDEOPATH = {VIDEOPATH}")
+
+print(os.path.basename("path/to/file/sample.txt"))
