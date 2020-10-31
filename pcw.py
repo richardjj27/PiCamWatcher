@@ -84,6 +84,26 @@ global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
 global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT
 global SHUTTEREXISTS
 
+trigger_flag = int('000000000000', 2)
+process_flag = int('000000000000', 2)
+
+# trigger_flag  9876543210
+# PI-RECORD     0000000001
+# PI-STREAM     0000000010
+# PI-TLAPSE     0000000100
+# PI-STOPRECORD 0000001000
+# PI-STOPSTREAM 0000010000
+# PI-STOPTLAPSE 0000100000
+# PI-STOPALL    0001000000
+# PI-STOPSCRIPT 0010000000
+# PI-REBOOT     0100000000
+
+# process_flag  9876543210
+# Idle          0000000000
+# Recording     0000000001
+# Streaming     0000000010
+# Timelapsing   0000000100
+    
 # VIDEOPATH = "/media/usb/video"
 # IMAGEPATH = "/media/usb/picamsync/image"
 # IMAGEARCHIVEPATH = "/media/usb/imagearchive" # Real path or 'null'
@@ -546,29 +566,6 @@ if __name__ == "__main__":
     TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
 
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
-
-    trigger_flag = int('000000000000', 2)
-    process_flag = int('000000000000', 2)
-
-    # trigger_flag  9876543210
-    # PI-RECORD     0000000001
-    # PI-STREAM     0000000010
-    # PI-TLAPSE     0000000100
-    # PI-STOPRECORD 0000001000
-    # PI-STOPSTREAM 0000010000
-    # PI-STOPTLAPSE 0000100000
-    # PI-STOPALL    0001000000
-    # PI-STOPSCRIPT 0010000000
-    # PI-REBOOT     0100000000
-
-    # process_flag  9876543210
-    # Idle          0000000000
-    # Recording     0000000001
-    # Streaming     0000000010
-    # Timelapsing   0000000100
-    
-    
-    
     
     # Create file system watcher.
     patterns = "*"
