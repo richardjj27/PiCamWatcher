@@ -8,6 +8,7 @@
 # Todo:
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
+#  Check the regex constant validation.
 
 # Done:
 #* Put some file rotation login in
