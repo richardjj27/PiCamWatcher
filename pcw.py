@@ -9,7 +9,7 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
-#  __init__ ...
+#  __init__
 
 # Done:
 #* Put some file rotation login in
