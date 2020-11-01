@@ -505,9 +505,7 @@ def picamstarttlapse():
     time.sleep(1)
 
 if __name__ == "__main__":
-    
-    # Get constants from ini file.
-    
+    # Get constants from ini file.  
     RUNNINGPATH = "."
     LOGPATH = "./logs"
     BINARYPATH = "./bin"
@@ -517,10 +515,11 @@ if __name__ == "__main__":
     signal(SIGINT, handler)
 
     # Setup logging (quiet background)
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%d-%b-%y %H:%M:%S', filename=LOGPATH + "/picamwatcher.log", filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)-20s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', filename=LOGPATH + "/picamwatcher.log", filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    #formatter = logging.Formatter('%(asctime)s %(name)-12s: %(levelname)-8s %(message)s')
+    formatter = logging.Formatter("%(asctime)-20s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S")
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
@@ -562,15 +561,15 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
+    # Start watching for events...
+    my_observer.start()
+
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
     createfolder(IMAGEPATH)
     if(IMAGEARCHIVEPATH.lower() != "null"):
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
-
-    # Start watching for events...
-    my_observer.start()
 
     # Set initial state if (single or multiple) files exist.
     # Make this section fake a file creation (rename then copy back) to trigger the event properly.
@@ -596,8 +595,6 @@ if __name__ == "__main__":
         # Delete everything.
         silentremoveexcept(WATCHPATH, "pi-^^^")
 
-
-
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)          
     tlapse_thread = threading.Thread(target = picamstarttlapse)
@@ -621,10 +618,10 @@ if __name__ == "__main__":
                 logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 trigger_flag = clearBit(trigger_flag, 1)
                 while testBit(process_flag, 1) != 0:
-                    time.sleep(1)
-                #stream_thread.join()                
+                    time.sleep(1)              
                 logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 stream_thread = threading.Thread(target = picamstartstream)   
+
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
                 trigger_flag = clearBit(trigger_flag, 5)
@@ -648,7 +645,7 @@ if __name__ == "__main__":
                 close_shutter()
                 
                 if((int(time.time()) % 10) == 5):
-                    logging.info(f"Waiting for something to do.")
+                    logging.debug(f"Waiting for something to do.")
           
                 if(testBit(trigger_flag, 0) != 0):
                     # Start Record (bit 0)
@@ -689,8 +686,6 @@ if __name__ == "__main__":
             time.sleep(1)
 
     except KeyboardInterrupt:
-        #record_thread.join()
-        #stream_thread.join()
         my_observer.stop()
         my_observer.join()
 
