@@ -9,6 +9,7 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
+#  __init__ ...
 
 # Done:
 #* Put some file rotation login in
@@ -52,9 +53,10 @@
 #* Make it run as a service/startup.  Howto in OneNote and sample .service files.
 #* Add a 'zero' option to ignore archive/cleaning operations. / solved by just setting image archive path to /dev/null
 #* Added a function to allow for a ctrl-c to exit gracefully.
-#  Do some validity checks for constants.
-#  Moved constants to config file.
-#  Added the ability to override constants from withint pi-*** files.
+#* Do some validity checks for constants.
+#* Moved constants to config file.
+#* Added the ability to override constants from withint pi-*** files.
+#* At startup, also Use pi-*** to provide overriding conig.
 
 import time
 import threading
@@ -84,6 +86,8 @@ global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATIO
 global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
 global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT
 global SHUTTEREXISTS
+global trigger_flag
+global process_flag
 
 trigger_flag = int('000000000000', 2)
 process_flag = int('000000000000', 2)
@@ -292,13 +296,11 @@ def on_created(event):
 
     # check for constants changed in new trigger file.
 
+    print("event")
     src_filename = os.path.basename(event.src_path)
-    print(event.src_path)
-    print(src_filename)
 
     if ("pi-record" == src_filename) or ("pi-stream" == src_filename) or ("pi-tlapse" == src_filename):
-        print("override")
-
+        # These values can be overridden within the trigger file.
         RESOLUTIONX = int(read_config(event.src_path, "CAMERA", "RESOLUTIONX", "^(6[4-8][0-9]|69[0-9]|[7-9][0-9]{2}|1[0-8][0-9]{2}|19[01][0-9]|1920)$", "retain", RESOLUTIONX)) # 640 > 1920
         RESOLUTIONY = int(read_config(event.src_path, "CAMERA", "RESOLUTIONY", "^(48[0-9]|49[0-9]|[5-9][0-9]{2}|1[0-5][0-9]{2}|1600)$", "retain", RESOLUTIONY)) # 480 > 1600
         BRIGHTNESS = int(read_config(event.src_path, "CAMERA", "BRIGHTNESS", "^([1-9]|[1-8][0-9]|9[0-9]|100)$", "retain", BRIGHTNESS)) # 1 > 100
@@ -312,21 +314,6 @@ def on_created(event):
         TIMELAPSEINTERVAL = int(read_config(event.src_path, "OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", TIMELAPSEINTERVAL)) # 5 > 30
         STREAMPORT = int(read_config(event.src_path, "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT)) # 30000 > 65535
         TIMESTAMP = read_config(event.src_path, "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
-
-        # logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
-        # logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
-        # logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
-        # logging.debug(f"CONTRAST = {CONTRAST}")
-        # logging.debug(f"AWBMODE = {AWBMODE}")
-        # logging.debug(f"FRAMEPS = {FRAMEPS}")
-        # logging.debug(f"ROTATION = {ROTATION}°")
-        # logging.debug(f"QUALITY = {QUALITY}")
-
-        # logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} minutes")
-        # logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
-        # logging.debug(f"STREAMPORT = {STREAMPORT}")
-        # logging.debug(f"TIMESTAMP = {TIMESTAMP}")
-        # print(event.src_path + "xxx")
 
     if "pi-record" == src_filename:
         silentremoveexcept(WATCHPATH, "pi-record")
@@ -569,11 +556,7 @@ if __name__ == "__main__":
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
     
     # Create file system watcher.
-    patterns = "*"
-    ignore_patterns = ""
-    ignore_directories = True
-    case_sensitive = False
-    my_event_handler = PatternMatchingEventHandler(patterns, ignore_patterns, ignore_directories, case_sensitive)
+    my_event_handler = PatternMatchingEventHandler(patterns=['*pi-*'], ignore_patterns=[], ignore_directories=True, case_sensitive=True)
     my_event_handler.on_created = on_created
     my_event_handler.on_deleted = on_deleted
     my_observer = Observer()
@@ -586,53 +569,34 @@ if __name__ == "__main__":
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
 
-    # Log the constants
-
-    # Log the constants
-    # logging.debug(f"VIDEOPATH = {VIDEOPATH}")
-    # logging.debug(f"IMAGEPATH = {IMAGEPATH}")
-    # logging.debug(f"IMAGEARCHIVEPATH = {IMAGEARCHIVEPATH}")
-    # logging.debug(f"WATCHPATH = {WATCHPATH}")
-
-    # logging.debug(f"RESOLUTIONX = {RESOLUTIONX}")
-    # logging.debug(f"RESOLUTIONY = {RESOLUTIONY}")
-    # logging.debug(f"BRIGHTNESS = {BRIGHTNESS}")
-    # logging.debug(f"CONTRAST = {CONTRAST}")
-    # logging.debug(f"AWBMODE = {AWBMODE}")
-    # logging.debug(f"FRAMEPS = {FRAMEPS}")
-    # logging.debug(f"ROTATION = {ROTATION}°")
-    # logging.debug(f"QUALITY = {QUALITY}")
-
-    # logging.debug(f"VIDEOINTERVAL = {VIDEOINTERVAL} minutes")
-    # logging.debug(f"TIMELAPSEINTERVAL = {TIMELAPSEINTERVAL} seconds")
-    # logging.debug(f"STREAMPORT = {STREAMPORT}")
-    # logging.debug(f"TIMESTAMP = {TIMESTAMP}")
-
-    # logging.debug(f"VIDEOPATHFSLIMIT = {VIDEOPATHFSLIMIT} MB")
-    # logging.debug(f"IMAGEPATHLIMIT = {IMAGEPATHLIMIT}MB")
-    # logging.debug(f"IMAGEARCHIVEPATHLIMIT = {IMAGEARCHIVEPATHLIMIT} MB")
-    # logging.debug(f"TAKESNAPSHOT = {TAKESNAPSHOT}")
-    # logging.debug(f"SHUTTEREXISTS = {SHUTTEREXISTS}")
+    # Start watching for events...
+    my_observer.start()
 
     # Set initial state if (single or multiple) files exist.
+    # Make this section fake a file creation (rename then copy back) to trigger the event properly.
     if(path.exists(WATCHPATH + "/pi-record") is True):
-        trigger_flag = setBit(trigger_flag, 0)
-        silentremoveexcept(WATCHPATH, "pi-record")
+        shutil.move(WATCHPATH + "/pi-record", WATCHPATH + "/pi-record.tmp")
+        shutil.copy(WATCHPATH + "/pi-record.tmp", WATCHPATH + "/pi-record")
+        #trigger_flag = setBit(trigger_flag, 0)
+        #silentremoveexcept(WATCHPATH, "pi-record")
 
     elif(path.exists(WATCHPATH + "/pi-stream") is True):
-        trigger_flag = setBit(trigger_flag, 1)
-        silentremoveexcept(WATCHPATH, "pi-stream")
+        shutil.move(WATCHPATH + "/pi-stream", WATCHPATH + "/pi-stream.tmp")
+        shutil.copy(WATCHPATH + "/pi-stream.tmp", WATCHPATH + "/pi-stream")
+        #trigger_flag = setBit(trigger_flag, 1)
+        #silentremoveexcept(WATCHPATH, "pi-stream")
 
     elif(path.exists(WATCHPATH + "/pi-tlapse") is True):
-        trigger_flag = setBit(trigger_flag, 2)
-        silentremoveexcept(WATCHPATH, "pi-tlapse")
+        shutil.move(WATCHPATH + "/pi-tlapse", WATCHPATH + "/pi-tlapse.tmp")
+        shutil.copy(WATCHPATH + "/pi-tlapse.tmp", WATCHPATH + "/pi-tlapse")
+        #trigger_flag = setBit(trigger_flag, 2)
+        #silentremoveexcept(WATCHPATH, "pi-tlapse")
 
     else:
         # Delete everything.
         silentremoveexcept(WATCHPATH, "pi-^^^")
 
-    # Start watching for events...
-    my_observer.start()
+
 
     record_thread = threading.Thread(target = picamstartrecord)
     stream_thread = threading.Thread(target = picamstartstream)          
