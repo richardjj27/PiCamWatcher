@@ -211,7 +211,7 @@ def CleanOldFiles():
     # clean video files (based on free space) > trash
     if(freespace < VIDEOPATHFSLIMIT):
         while (freespace < VIDEOPATHFSLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "/RPiR-*.*")
+            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPiR-*.*")
             full_path = [VIDEOPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             silentremove(oldest_file, " / Free Space: " + ('{:.2f}'.format(freespace)) + "MB")
@@ -221,7 +221,7 @@ def CleanOldFiles():
     imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
     if(imageusedspace > IMAGEPATHLIMIT):
         while (imageusedspace > IMAGEPATHLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "/RPi*.*")
+            list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "RPi*.*")
             full_path = [IMAGEPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             if(IMAGEARCHIVEPATH.lower() != "null"):
@@ -268,7 +268,13 @@ def read_config(config_file, section, item, rule, default, retain = ""):
     config = configparser.ConfigParser()
     pattern = re.compile(rule)
 
-    config.read(config_file)
+    try:
+        config.read(config_file)
+    except:
+        if(default == "retain"):
+            output = retain
+        else:
+            output = default
 
     try:
         input = config[section][item]
@@ -506,10 +512,10 @@ def picamstarttlapse():
 
 if __name__ == "__main__":
     # Get constants from ini file.  
-    RUNNINGPATH = "."
-    LOGPATH = "./logs"
-    BINARYPATH = "./bin"
-    CONFIG_FILE = "./pcw.ini"
+    RUNNINGPATH = os.path.dirname(os.path.realpath(__file__))
+    LOGPATH = RUNNINGPATH + "/logs"
+    BINARYPATH = RUNNINGPATH + "/bin"
+    CONFIG_FILE = RUNNINGPATH + "/pcw.ini"
 
     # Intercept Ctrl-C to gracefully exit
     signal(SIGINT, handler)
@@ -518,7 +524,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)-20s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', filename=LOGPATH + "/picamwatcher.log", filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
-    #formatter = logging.Formatter('%(asctime)s %(name)-12s: %(levelname)-8s %(message)s')
     formatter = logging.Formatter("%(asctime)-20s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S")
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
