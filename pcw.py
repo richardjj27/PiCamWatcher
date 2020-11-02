@@ -551,9 +551,9 @@ if __name__ == "__main__":
     STREAMPORT =  int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
     TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
 
-    VIDEOPATHFSLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "VIDEOPATHFSLIMIT", "x", "10240")) # 1024+
-    IMAGEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEPATHLIMIT", "x", "2048")) # 64+
-    IMAGEARCHIVEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEARCHIVEPATHLIMIT", "x", "2048")) # 64+ 
+    VIDEOPATHFSLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "VIDEOPATHFSLIMIT", "", "10240")) # 1024+
+    IMAGEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEPATHLIMIT", "", "2048")) # 64+
+    IMAGEARCHIVEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEARCHIVEPATHLIMIT", "", "2048")) # 64+ 
     TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
 
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
@@ -685,7 +685,12 @@ if __name__ == "__main__":
        
             if((int(time.time()) % 60) == 15):
                 # Log temperature every minute.
-                logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+                if(CPUTemperature().temperature) > 65:
+                    logging.warning(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+                elif (CPUTemperature().temperature) < 55:
+                    logging.debug(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+                else:       
+                    logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
 
             time.sleep(1)
 
