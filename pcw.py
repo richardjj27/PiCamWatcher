@@ -302,7 +302,6 @@ def on_created(event):
 
     # check for constants changed in new trigger file.
 
-    print("event")
     src_filename = os.path.basename(event.src_path)
 
     if ("pi-record" == src_filename) or ("pi-stream" == src_filename) or ("pi-tlapse" == src_filename):
