@@ -9,7 +9,8 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
-#  __init__
+#  Make 'convert to MP4' an option (and threaded)
+#  Make config text case agnostic
 
 # Done:
 #* Put some file rotation login in
@@ -84,7 +85,7 @@ import re
 global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH,IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH
 global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
 global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
-global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT
+global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT, MEDIAFORMAT
 global SHUTTEREXISTS
 global trigger_flag
 global process_flag
@@ -211,7 +212,7 @@ def CleanOldFiles():
     # clean video files (based on free space) > trash
     if(freespace < VIDEOPATHFSLIMIT):
         while (freespace < VIDEOPATHFSLIMIT):
-            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPiR-*.*")
+            list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPi*.*")
             full_path = [VIDEOPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             silentremove(oldest_file, " / Free Space: " + ('{:.2f}'.format(freespace)) + "MB")
@@ -389,14 +390,21 @@ def createfolder(foldername):
         pass
 
 def open_shutter():
-    if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'True') and ((int(time.time()) % 5) == 3):
         # logging.info("shutter open")
         os.system(BINARYPATH + "/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
-    if(SHUTTEREXISTS is True) and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'True') and ((int(time.time()) % 5) == 3):
         # logging.info("shutter closed")
         os.system(BINARYPATH + "/shutter 0 >/dev/null 2>&1")
+
+def converttomp4(filename):
+    convertstring = "ffmpeg -r " + str(FRAMEPS) + " -i " + VIDEOPATH + "/" + filename + ".h264 -vcodec copy " + VIDEOPATH + "/" + filename + ".mp4"
+    logging.info(f"Converting to: {filename}.mp4")
+    os.system(convertstring + " >/dev/null 2>&1")
+    if(MEDIAFORMAT == "MP4"):
+        silentremove(VIDEOPATH + "/" + filename + ".h264", " (converted).")
 
 def picamstartrecord():
     global trigger_flag
@@ -410,31 +418,35 @@ def picamstartrecord():
     camera.contrast = CONTRAST
     camera.awb_mode = AWBMODE
     camera.framerate = FRAMEPS
+    if(TIMESTAMP == 'True'):
+        camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        camera.annotate_background = picamera.Color('black')
     videoprefix = "RPiR-"
 
     # add a delay to ensure recording starts > 5 and < 55 to avoid clashing with the snapshot image.
     while (int(time.time()) % 60 <= 5 or int(time.time()) % 60 >= 55):
         time.sleep(5)
 
-    #filetime = int(time.time())
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
         CleanOldFiles()
-        if(TIMESTAMP is True):
-            camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            camera.annotate_background = picamera.Color('black')
-        camera.start_recording(VIDEOPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {VIDEOPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.h264'}")
+        outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
+        camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
+        logging.info(f"Recording: {outputfilename + '.h264'}")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
-            if(TAKESNAPSHOT is True):
+            if(TIMESTAMP == 'True'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                camera.annotate_background = picamera.Color('black')
-            time.sleep(1)
-            # Take a snapshot jpg every minute(ish)
-            if((int(time.time()) % 60) == 0):
-                logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-                camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+            if(TAKESNAPSHOT == 'True'):
+                time.sleep(1)
+                # Take a snapshot jpg every minute(ish)
+                if((int(time.time()) % 60) == 0):
+                    logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                    camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
+        if(MEDIAFORMAT == "MP4" or MEDIAFORMAT == "BOTH"):
+            convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), daemon = True)
+            convert_thread.start()
+
     camera.close()
     process_flag = clearBit(process_flag, 0)
     time.sleep(1)
@@ -452,6 +464,9 @@ def picamstartstream():
         camera.brightness = BRIGHTNESS
         camera.contrast = CONTRAST
         camera.awb_mode = AWBMODE
+        if(TIMESTAMP == 'True'):
+            camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            camera.annotate_background = picamera.Color('black')
         camera.start_recording(output, format='mjpeg', quality=40)
         try:
             address = ('', STREAMPORT)
@@ -461,9 +476,8 @@ def picamstartstream():
             logging.info(f"Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while (testBit(trigger_flag, 1) != 0):
-                if(TIMESTAMP is True):
+                if(TIMESTAMP == 'True'):
                     camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    camera.annotate_background = picamera.Color('black')
                 time.sleep(2)
             server.shutdown()
             time.sleep(2)
@@ -492,15 +506,17 @@ def picamstarttlapse():
     camera.brightness = BRIGHTNESS
     camera.contrast = CONTRAST
     camera.awb_mode = AWBMODE
+    if(TIMESTAMP == 'True'):
+        camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        camera.annotate_background = picamera.Color('black')
     videoprefix = "RPiT-"
 
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
         CleanOldFiles()
-        if(TIMESTAMP is True):
+        if(TIMESTAMP == 'True'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            camera.annotate_background = picamera.Color('black')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
@@ -548,8 +564,9 @@ if __name__ == "__main__":
 
     VIDEOINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "30")) # 1 > 30
     TIMELAPSEINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
-    STREAMPORT =  int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
+    STREAMPORT = int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
     TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+    MEDIAFORMAT = read_config(CONFIG_FILE,"OUTPUT", "MEDIAFORMAT", "(?:^|(?<= ))(H264|MP4|BOTH)(?:(?= )|$)", "H264") # True|False
 
     VIDEOPATHFSLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "VIDEOPATHFSLIMIT", "", "10240")) # 1024+
     IMAGEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEPATHLIMIT", "", "2048")) # 64+
