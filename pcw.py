@@ -9,8 +9,7 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
-#  Make 'convert to MP4' an option (and threaded)
-#  Make config text case agnostic
+#  Add an IFTTT option
 
 # Done:
 #* Put some file rotation login in
@@ -58,6 +57,8 @@
 #* Moved constants to config file.
 #* Added the ability to override constants from withint pi-*** files.
 #* At startup, also Use pi-*** to provide overriding conig.
+#* Make 'convert to MP4' an option (and threaded)
+#() Make config text case agnostic
 
 import time
 import threading
@@ -278,7 +279,7 @@ def read_config(config_file, section, item, rule, default, retain = ""):
             output = default
 
     try:
-        input = config[section][item]
+        input = (config[section][item]).lower()
         if(pattern.match(input)):
             output = input
         elif(default == "terminate"):
@@ -390,21 +391,21 @@ def createfolder(foldername):
         pass
 
 def open_shutter():
-    if(SHUTTEREXISTS == 'True') and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
         # logging.info("shutter open")
         os.system(BINARYPATH + "/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
-    if(SHUTTEREXISTS == 'True') and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
         # logging.info("shutter closed")
         os.system(BINARYPATH + "/shutter 0 >/dev/null 2>&1")
 
 def converttomp4(filename):
     convertstring = "ffmpeg -r " + str(FRAMEPS) + " -i " + VIDEOPATH + "/" + filename + ".h264 -vcodec copy " + VIDEOPATH + "/" + filename + ".mp4"
-    logging.info(f"Converting to: {filename}.mp4")
+    logging.info(f"Converting : {filename} to MP4")
     os.system(convertstring + " >/dev/null 2>&1")
-    if(MEDIAFORMAT == "MP4"):
-        silentremove(VIDEOPATH + "/" + filename + ".h264", " (converted).")
+    if(MEDIAFORMAT == "mp4"):
+        silentremove(VIDEOPATH + "/" + filename + ".h264", " (converted)")
 
 def picamstartrecord():
     global trigger_flag
@@ -418,7 +419,7 @@ def picamstartrecord():
     camera.contrast = CONTRAST
     camera.awb_mode = AWBMODE
     camera.framerate = FRAMEPS
-    if(TIMESTAMP == 'True'):
+    if(TIMESTAMP == 'true'):
         camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         camera.annotate_background = picamera.Color('black')
     videoprefix = "RPiR-"
@@ -434,16 +435,16 @@ def picamstartrecord():
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
-            if(TIMESTAMP == 'True'):
+            if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            if(TAKESNAPSHOT == 'True'):
+            if(TAKESNAPSHOT == 'true'):
                 time.sleep(1)
                 # Take a snapshot jpg every minute(ish)
                 if((int(time.time()) % 60) == 0):
                     logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
-        if(MEDIAFORMAT == "MP4" or MEDIAFORMAT == "BOTH"):
+        if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), daemon = True)
             convert_thread.start()
 
@@ -464,7 +465,7 @@ def picamstartstream():
         camera.brightness = BRIGHTNESS
         camera.contrast = CONTRAST
         camera.awb_mode = AWBMODE
-        if(TIMESTAMP == 'True'):
+        if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             camera.annotate_background = picamera.Color('black')
         camera.start_recording(output, format='mjpeg', quality=40)
@@ -476,7 +477,7 @@ def picamstartstream():
             logging.info(f"Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while (testBit(trigger_flag, 1) != 0):
-                if(TIMESTAMP == 'True'):
+                if(TIMESTAMP == 'true'):
                     camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 time.sleep(2)
             server.shutdown()
@@ -506,7 +507,7 @@ def picamstarttlapse():
     camera.brightness = BRIGHTNESS
     camera.contrast = CONTRAST
     camera.awb_mode = AWBMODE
-    if(TIMESTAMP == 'True'):
+    if(TIMESTAMP == 'true'):
         camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         camera.annotate_background = picamera.Color('black')
     videoprefix = "RPiT-"
@@ -515,7 +516,7 @@ def picamstarttlapse():
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
         CleanOldFiles()
-        if(TIMESTAMP == 'True'):
+        if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
@@ -565,15 +566,15 @@ if __name__ == "__main__":
     VIDEOINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "30")) # 1 > 30
     TIMELAPSEINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
     STREAMPORT = int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
-    TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
-    MEDIAFORMAT = read_config(CONFIG_FILE,"OUTPUT", "MEDIAFORMAT", "(?:^|(?<= ))(H264|MP4|BOTH)(?:(?= )|$)", "H264") # True|False
+    TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
+    MEDIAFORMAT = read_config(CONFIG_FILE,"OUTPUT", "MEDIAFORMAT", "(?:^|(?<= ))(h264|mp4|both)(?:(?= )|$)", "h264") # True|False
 
     VIDEOPATHFSLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "VIDEOPATHFSLIMIT", "", "10240")) # 1024+
     IMAGEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEPATHLIMIT", "", "2048")) # 64+
     IMAGEARCHIVEPATHLIMIT = int(read_config(CONFIG_FILE,"STORAGE", "IMAGEARCHIVEPATHLIMIT", "", "2048")) # 64+ 
-    TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+    TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
 
-    SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "True") # True|False
+    SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     
     # Create file system watcher.
     my_event_handler = PatternMatchingEventHandler(patterns=['*pi-*'], ignore_patterns=[], ignore_directories=True, case_sensitive=True)
