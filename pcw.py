@@ -10,6 +10,7 @@
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
 #  Add an IFTTT option
+#  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 
 # Done:
 #* Put some file rotation login in
@@ -439,8 +440,8 @@ def picamstartrecord():
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if(TAKESNAPSHOT == 'true'):
                 time.sleep(1)
-                # Take a snapshot jpg every minute(ish)
-                if((int(time.time()) % 60) == 0):
+                # Take a snapshot jpg every 30 seconds
+                if((int(time.time()) % 30) == 0):
                     logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
