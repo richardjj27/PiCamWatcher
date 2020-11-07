@@ -583,15 +583,15 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
-    # Start watching for events...
-    my_observer.start()
-
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
     createfolder(IMAGEPATH)
     if(IMAGEARCHIVEPATH.lower() != "null"):
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
+
+    # Start watching for events...
+    my_observer.start()
 
     # Set initial state if (single or multiple) files exist.
     # Make this section fake a file creation (rename then copy back) to trigger the event properly.
