@@ -225,10 +225,10 @@ def logsystemstatus():
     ap_usage = shutil.disk_usage(IMAGEARCHIVEPATH)
     rp_usage = shutil.disk_usage(RUNNINGPATH)
 
-    logging.info(f"VIDEOPATH        Size: {((vp_usage.total) / 1048576):,.0f}MB, Free: {((vp_usage.free) / 1048576):,.2f}MB, Used: {((vp_usage.used / vp_usage.total) * 100):,.2f}%")
-    logging.info(f"IMAGEPATH        Size: {((ip_usage.total) / 1048576):,.0f}MB, Free: {((ip_usage.free) / 1048576):,.2f}MB, Used: {((ip_usage.used / ip_usage.total) * 100):,.2f}%")
-    logging.info(f"IMAGEARCHIVEPATH Size: {((ap_usage.total) / 1048576):,.0f}MB, Free: {((ap_usage.free) / 1048576):,.2f}MB, Used: {((ap_usage.used / ap_usage.total) * 100):,.2f}%")
-    logging.info(f"RUNNING          Size: {((rp_usage.total) / 1048576):,.0f}MB, Free: {((rp_usage.free) / 1048576):,.2f}MB, Used: {((rp_usage.used / rp_usage.total) * 100):,.2f}%")
+    logging.info(f"VIDEO Volume         Size: {((vp_usage.total) / 1048576):,.0f}MB, Free: {((vp_usage.free) / 1048576):,.2f}MB, Used: {((vp_usage.used / vp_usage.total) * 100):,.2f}%")
+    logging.info(f"IMAGE Volume         Size: {((ip_usage.total) / 1048576):,.0f}MB, Free: {((ip_usage.free) / 1048576):,.2f}MB, Used: {((ip_usage.used / ip_usage.total) * 100):,.2f}%")
+    logging.info(f"IMAGEARCHIVE Volume  Size: {((ap_usage.total) / 1048576):,.0f}MB, Free: {((ap_usage.free) / 1048576):,.2f}MB, Used: {((ap_usage.used / ap_usage.total) * 100):,.2f}%")
+    logging.info(f"RUNNING Volume       Size: {((rp_usage.total) / 1048576):,.0f}MB, Free: {((rp_usage.free) / 1048576):,.2f}MB, Used: {((rp_usage.used / rp_usage.total) * 100):,.2f}%")
     
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
