@@ -11,6 +11,7 @@
 #  Check the regex constant validation.
 #  Add an IFTTT option
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
+#  Paths in ini file shouldn't be forced to lowercase
 
 # Done:
 #* Put some file rotation login in
@@ -59,7 +60,8 @@
 #* Added the ability to override constants from withint pi-*** files.
 #* At startup, also Use pi-*** to provide overriding conig.
 #* Make 'convert to MP4' an option (and threaded)
-#() Make config text case agnostic
+#* Make config text case agnostic
+#* Added a 'log system status' function - currently runs every minute.
 
 import time
 import threading
@@ -132,8 +134,8 @@ process_flag = int('000000000000', 2)
 # TIMESTAMP = True # Will a timestamp be put on photos and videos? [True or False]
 
 # VIDEOPATHFSLIMIT = 10240 # At how many MB free should old videos be deleted. [>=1024]
-# IMAGEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>64]
-# IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>64]
+# IMAGEPATHLIMIT = 2048 # Maximum Size of JPG images to be kept (in MB) before being moved to IMAGEARCHIVEPATH [>=64]
+# IMAGEARCHIVEPATHLIMIT = 2048 # At how many MB free should old images be deleted. [>=64]
 # TAKESNAPSHOT = True # Take a regular snapshot JPG when recording a video file. [True or False]
 # SHUTTEREXISTS = True # Does the camera have a shutter which needs opening? [True or False]
 
@@ -208,7 +210,27 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-def CleanOldFiles():
+def logsystemstatus():             
+    # Log Temperature
+    if(CPUTemperature().temperature) > 65:
+        logging.warning(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+    elif (CPUTemperature().temperature) < 55:
+        logging.debug(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+    else:       
+        logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+
+    # Log disk capacity usage
+    vp_usage = shutil.disk_usage(VIDEOPATH)
+    ip_usage = shutil.disk_usage(IMAGEPATH)
+    ap_usage = shutil.disk_usage(IMAGEARCHIVEPATH)
+    rp_usage = shutil.disk_usage(RUNNINGPATH)
+
+    logging.info(f"VIDEOPATH        Size: {((vp_usage.total) / 1048576):,.0f}MB, Free: {((vp_usage.free) / 1048576):,.2f}MB, Used: {((vp_usage.used / vp_usage.total) * 100):,.2f}%")
+    logging.info(f"IMAGEPATH        Size: {((ip_usage.total) / 1048576):,.0f}MB, Free: {((ip_usage.free) / 1048576):,.2f}MB, Used: {((ip_usage.used / ip_usage.total) * 100):,.2f}%")
+    logging.info(f"IMAGEARCHIVEPATH Size: {((ap_usage.total) / 1048576):,.0f}MB, Free: {((ap_usage.free) / 1048576):,.2f}MB, Used: {((ap_usage.used / ap_usage.total) * 100):,.2f}%")
+    logging.info(f"RUNNING          Size: {((rp_usage.total) / 1048576):,.0f}MB, Free: {((rp_usage.free) / 1048576):,.2f}MB, Used: {((rp_usage.used / rp_usage.total) * 100):,.2f}%")
+    
+def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     
     # clean video files (based on free space) > trash
@@ -217,7 +239,7 @@ def CleanOldFiles():
             list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPi*.*")
             full_path = [VIDEOPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            silentremove(oldest_file, " / Free Space: " + ('{:.2f}'.format(freespace)) + "MB")
+            silentremove(oldest_file, " / Free Space: " + ('{:,.2f}'.format(freespace)) + "MB")
             freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     
     # clean image files (based on folder size) > archive
@@ -228,9 +250,9 @@ def CleanOldFiles():
             full_path = [IMAGEPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             if(IMAGEARCHIVEPATH.lower() != "null"):
-                silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+                silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
             else:
-                silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+                silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
 
     # clean archive image files (based on folder size) > trash
@@ -241,7 +263,7 @@ def CleanOldFiles():
                 list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
                 full_path = [IMAGEARCHIVEPATH + "/{0}".format(x) for x in list_of_files]
                 oldest_file = min(full_path, key=os.path.getctime)
-                silentremove(oldest_file, " / Used Space: " + ('{:.2f}'.format(imageusedspace)) + "MB")
+                silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
                 imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
 
 def testBit(int_type, offset):
@@ -431,7 +453,7 @@ def picamstartrecord():
 
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
-        CleanOldFiles()
+        cleanoldfiles()
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
@@ -516,7 +538,7 @@ def picamstarttlapse():
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
-        CleanOldFiles()
+        cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
@@ -591,6 +613,8 @@ if __name__ == "__main__":
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
 
+    logsystemstatus()
+
     # Start watching for events...
     my_observer.start()
 
@@ -599,20 +623,14 @@ if __name__ == "__main__":
     if(path.exists(WATCHPATH + "/pi-record") is True):
         shutil.move(WATCHPATH + "/pi-record", WATCHPATH + "/pi-record.tmp")
         shutil.copy(WATCHPATH + "/pi-record.tmp", WATCHPATH + "/pi-record")
-        #trigger_flag = setBit(trigger_flag, 0)
-        #silentremoveexcept(WATCHPATH, "pi-record")
 
     elif(path.exists(WATCHPATH + "/pi-stream") is True):
         shutil.move(WATCHPATH + "/pi-stream", WATCHPATH + "/pi-stream.tmp")
         shutil.copy(WATCHPATH + "/pi-stream.tmp", WATCHPATH + "/pi-stream")
-        #trigger_flag = setBit(trigger_flag, 1)
-        #silentremoveexcept(WATCHPATH, "pi-stream")
 
     elif(path.exists(WATCHPATH + "/pi-tlapse") is True):
         shutil.move(WATCHPATH + "/pi-tlapse", WATCHPATH + "/pi-tlapse.tmp")
         shutil.copy(WATCHPATH + "/pi-tlapse.tmp", WATCHPATH + "/pi-tlapse")
-        #trigger_flag = setBit(trigger_flag, 2)
-        #silentremoveexcept(WATCHPATH, "pi-tlapse")
 
     else:
         # Delete everything.
@@ -703,13 +721,8 @@ if __name__ == "__main__":
                 os.system("sudo reboot now >/dev/null 2>&1")    
        
             if((int(time.time()) % 60) == 15):
-                # Log temperature every minute.
-                if(CPUTemperature().temperature) > 65:
-                    logging.warning(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
-                elif (CPUTemperature().temperature) < 55:
-                    logging.debug(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
-                else:       
-                    logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+                logsystemstatus()
+
 
             time.sleep(1)
 
