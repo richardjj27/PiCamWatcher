@@ -210,6 +210,17 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+def get_foldersize(start_path = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
+
 def logsystemstatus():             
     # Log Temperature
     if(CPUTemperature().temperature) > 65:
@@ -225,10 +236,14 @@ def logsystemstatus():
     ap_usage = shutil.disk_usage(IMAGEARCHIVEPATH)
     rp_usage = shutil.disk_usage(RUNNINGPATH)
 
-    logging.debug(f"VIDEO Volume         Size: {((vp_usage.total) / 1048576):,.0f}MB, Free: {((vp_usage.free) / 1048576):,.2f}MB, Used: {((vp_usage.used / vp_usage.total) * 100):,.2f}%")
-    logging.debug(f"IMAGE Volume         Size: {((ip_usage.total) / 1048576):,.0f}MB, Free: {((ip_usage.free) / 1048576):,.2f}MB, Used: {((ip_usage.used / ip_usage.total) * 100):,.2f}%")
-    logging.debug(f"IMAGEARCHIVE Volume  Size: {((ap_usage.total) / 1048576):,.0f}MB, Free: {((ap_usage.free) / 1048576):,.2f}MB, Used: {((ap_usage.used / ap_usage.total) * 100):,.2f}%")
-    logging.debug(f"RUNNING Volume       Size: {((rp_usage.total) / 1048576):,.0f}MB, Free: {((rp_usage.free) / 1048576):,.2f}MB, Used: {((rp_usage.used / rp_usage.total) * 100):,.2f}%")
+    vp_size = get_foldersize(VIDEOPATH)
+    ip_size = get_foldersize(IMAGEPATH)
+    ap_size = get_foldersize(IMAGEARCHIVEPATH)
+
+    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.2f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.2f}%, FolderUsed: {((vp_size) / 1048576):,.2f}MB")
+    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.2f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.2f}%, FolderUsed: {((ip_size) / 1048576):,.2f}MB")
+    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.2f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.2f}%, FolderUsed: {((ap_size) / 1048576):,.2f}MB")
+    logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.2f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.2f}%")
     
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
