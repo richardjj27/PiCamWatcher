@@ -4,7 +4,10 @@
 # Testing Required:
 #  Check if any data is missed at file swapover and jpg snapshot time.
 #  Setting framerate to something other than 30 gets weird results.
-
+#
+# Bugs:
+#  Script seems to stop with a thread running and doesn't resolve until a reboot.
+#
 # Todo:
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
@@ -62,6 +65,8 @@
 #* Make 'convert to MP4' an option (and threaded)
 #* Make config text case agnostic
 #* Added a 'log system status' function - currently runs every minute.
+#* Added more info to logging.
+
 
 import time
 import threading
@@ -222,6 +227,9 @@ def get_foldersize(start_path = '.'):
     return total_size
 
 def logsystemstatus():             
+    #global record_thread
+    #global tlapse_thread
+    #global stream_thread
     # Log Temperature
     if(CPUTemperature().temperature) > 65:
         logging.warning(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
@@ -244,6 +252,10 @@ def logsystemstatus():
     logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.2f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.2f}%, FolderUsed: {((ip_size) / 1048576):,.2f}MB")
     logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.2f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.2f}%, FolderUsed: {((ap_size) / 1048576):,.2f}MB")
     logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.2f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.2f}%")
+    logging.debug(f"TRIGGERFLAG  : {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
+    logging.debug(f"RECORDTHREAD : {record_thread}")
+    logging.debug(f"STREAMTHREAD : {stream_thread}")
+    logging.debug(f"TLAPSETHREAD : {tlapse_thread}")
     
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
@@ -621,6 +633,10 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
+    record_thread = threading.Thread(target = picamstartrecord)
+    stream_thread = threading.Thread(target = picamstartstream)          
+    tlapse_thread = threading.Thread(target = picamstarttlapse)
+
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
     createfolder(IMAGEPATH)
@@ -650,10 +666,6 @@ if __name__ == "__main__":
     else:
         # Delete everything.
         silentremoveexcept(WATCHPATH, "pi-^^^")
-
-    record_thread = threading.Thread(target = picamstartrecord)
-    stream_thread = threading.Thread(target = picamstartstream)          
-    tlapse_thread = threading.Thread(target = picamstarttlapse)
 
     try:
         while True:
@@ -736,7 +748,7 @@ if __name__ == "__main__":
                 os.system("sudo reboot now >/dev/null 2>&1")    
 
             # Log system status every 5 minutes.
-            if((int(time.time()) % 300) == 15):
+            if((int(time.time()) % 60) == 37):
                 logsystemstatus()
 
             time.sleep(1)
