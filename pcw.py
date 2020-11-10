@@ -67,7 +67,7 @@
 #* Added a 'log system status' function - currently runs every minute.
 #* Added more info to logging.
 #* Added space left in each target to logging.
-
+#* Archive/purge in a thread.
 
 import time
 import threading
@@ -485,7 +485,9 @@ def picamstartrecord():
 
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
-        cleanoldfiles()
+        cleanoldfiles_thread = threading.Thread(target=cleanoldfiles, daemon = True)
+        cleanoldfiles_thread.start()
+        #cleanoldfiles()
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
@@ -570,7 +572,9 @@ def picamstarttlapse():
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
-        cleanoldfiles()
+        cleanoldfiles_thread = threading.Thread(target=cleanoldfiles, daemon = True)
+        cleanoldfiles_thread.start()
+        #cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
