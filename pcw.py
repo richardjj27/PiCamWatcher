@@ -66,6 +66,7 @@
 #* Make config text case agnostic
 #* Added a 'log system status' function - currently runs every minute.
 #* Added more info to logging.
+#* Added space left in each target to logging.
 
 
 import time
@@ -248,10 +249,14 @@ def logsystemstatus():
     ip_size = get_foldersize(IMAGEPATH)
     ap_size = get_foldersize(IMAGEARCHIVEPATH)
 
-    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.2f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.2f}%, FolderUsed: {((vp_size) / 1048576):,.2f}MB")
-    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.2f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.2f}%, FolderUsed: {((ip_size) / 1048576):,.2f}MB")
-    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.2f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.2f}%, FolderUsed: {((ap_size) / 1048576):,.2f}MB")
-    logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.2f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.2f}%")
+    vp_left = (vp_usage.free - (VIDEOPATHFSLIMIT * 1048576 ))
+    ip_left = ((IMAGEPATHLIMIT * 1048576) - ip_size)
+    ap_left = ((IMAGEARCHIVEPATHLIMIT * 1048576 ) - ap_size)
+
+    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.0f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolderUsed: {((vp_size) / 1048576):,.0f}MB, Left: {((vp_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.0f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolderUsed: {((ip_size) / 1048576):,.0f}MB, Left: {((ip_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.0f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolderUsed: {((ap_size) / 1048576):,.0f}MB, Left: {((ap_left) / 1048576):,.0f}MB")
+    logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.0f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
     logging.debug(f"TRIGGERFLAG  : {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
     logging.debug(f"RECORDTHREAD : {record_thread}")
     logging.debug(f"STREAMTHREAD : {stream_thread}")
