@@ -7,7 +7,8 @@
 #
 # Bugs:
 #  Script seems to stop with a thread running and doesn't resolve until a reboot.
-#
+#  Threading cuts gaps but creates race conditions.
+
 # Todo:
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
@@ -223,8 +224,10 @@ def get_foldersize(start_path = '.'):
             fp = os.path.join(dirpath, f)
             # skip if it is symbolic link
             if not os.path.islink(fp):
-                total_size += os.path.getsize(fp)
-
+                try:
+                    total_size += os.path.getsize(fp)
+                except:
+                    pass
     return total_size
 
 def logsystemstatus():             
@@ -334,7 +337,7 @@ def read_config(config_file, section, item, rule, default, retain = ""):
             output = default
 
     try:
-        input = (config[section][item]).lower()
+        input = (config[section][item])
         if(pattern.match(input)):
             output = input
         elif(default == "terminate"):
@@ -485,9 +488,10 @@ def picamstartrecord():
 
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
-        cleanoldfiles_thread = threading.Thread(target=cleanoldfiles, daemon = True)
-        cleanoldfiles_thread.start()
-        #cleanoldfiles()
+        # cleanoldfiles_thread = threading.Thread(target=cleanoldfiles)
+        # logging.debug(f"cleanoldfiles_thread : {cleanoldfiles_thread}")
+        # cleanoldfiles_thread.start()
+        cleanoldfiles()
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
@@ -572,9 +576,10 @@ def picamstarttlapse():
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
-        cleanoldfiles_thread = threading.Thread(target=cleanoldfiles, daemon = True)
-        cleanoldfiles_thread.start()
-        #cleanoldfiles()
+        # cleanoldfiles_thread = threading.Thread(target=cleanoldfiles)
+        # logging.debug(f"cleanoldfiles_thread : {cleanoldfiles_thread}")
+        # cleanoldfiles_thread.start()
+        cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
