@@ -16,6 +16,10 @@
 #  Add an IFTTT option
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 #  Paths in ini file shouldn't be forced to lowercase
+#  Make the cleanup function more regularly
+#  Make 'move' commands use os.command with switches to allow for overwrite
+#  Add Audio alerts for events
+#  Add option to turn this off or on.
 
 # Done:
 #* Put some file rotation login in
@@ -93,7 +97,7 @@ from sys import exit
 import configparser
 import re
 
-global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH,IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH
+global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH, IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH, AUDIOPATH
 global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
 global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
 global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT, MEDIAFORMAT
@@ -267,7 +271,6 @@ def logsystemstatus():
     
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
-    
     # clean video files (based on free space) > trash
     if(freespace < VIDEOPATHFSLIMIT):
         while (freespace < VIDEOPATHFSLIMIT):
@@ -430,11 +433,12 @@ def silentremove(filename, message = ""):
         pass
 
 def silentmove(filename, destination, message = ""):
-    try:
-        logging.info(f"Archiving: {filename}{message}")
-        shutil.move(filename, destination)
-    except:
-        pass
+    #try:
+    logging.info(f"Archiving: {filename}{message}")
+    os.system("mv " + filename + " " + destination + ">/dev/null 2>&1")
+        #shutil.move(filename, destination)
+    #except:
+    #    pass
 
 def silentremoveexcept(keeppath, keepfilename):
     for entry in os.scandir(keeppath):
@@ -447,6 +451,9 @@ def createfolder(foldername):
         logging.info(f"Create Folder: {foldername}")
     except:
         pass
+
+def playsound(event):
+    os.system("aplay " + AUDIOPATH + "/" + event + ".wav>/dev/null 2>&1")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
@@ -470,6 +477,8 @@ def picamstartrecord():
     global process_flag
     global record_thread
 
+    playsound("record")
+
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -488,10 +497,7 @@ def picamstartrecord():
 
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
-        # cleanoldfiles_thread = threading.Thread(target=cleanoldfiles)
-        # logging.debug(f"cleanoldfiles_thread : {cleanoldfiles_thread}")
-        # cleanoldfiles_thread.start()
-        cleanoldfiles()
+        #cleanoldfiles()
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
@@ -503,6 +509,7 @@ def picamstartrecord():
                 # Take a snapshot jpg every 30 seconds
                 if((int(time.time()) % 30) == 0):
                     logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                    playsound("snapshot")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
@@ -518,6 +525,8 @@ def picamstartstream():
     global process_flag
     global stream_thread
     
+    playsound("stream")
+
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
         output = StreamingOutput()
@@ -562,6 +571,8 @@ def picamstarttlapse():
     global process_flag
     global tlapse_thread
 
+    playsound("tlapse")
+
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -576,13 +587,11 @@ def picamstarttlapse():
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
-        # cleanoldfiles_thread = threading.Thread(target=cleanoldfiles)
-        # logging.debug(f"cleanoldfiles_thread : {cleanoldfiles_thread}")
-        # cleanoldfiles_thread.start()
         cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        playsound("snapshot")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             time.sleep(.5)
@@ -617,6 +626,7 @@ if __name__ == "__main__":
     IMAGEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
     IMAGEARCHIVEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEARCHIVEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash (or null)
     WATCHPATH = read_config(CONFIG_FILE,"PATH", "WATCHPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
+    AUDIOPATH = read_config(CONFIG_FILE,"PATH", "AUDIOPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
 
     RESOLUTIONX = int(read_config(CONFIG_FILE,"CAMERA", "RESOLUTIONX", "^(6[4-8][0-9]|69[0-9]|[7-9][0-9]{2}|1[0-8][0-9]{2}|19[01][0-9]|1920)$", "800")) # 640 > 1920
     RESOLUTIONY = int(read_config(CONFIG_FILE,"CAMERA", "RESOLUTIONY", "^(48[0-9]|49[0-9]|[5-9][0-9]{2}|1[0-5][0-9]{2}|1600)$", "480")) # 480 > 1600
@@ -640,6 +650,8 @@ if __name__ == "__main__":
 
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     
+    playsound("start")
+
     # Create file system watcher.
     my_event_handler = PatternMatchingEventHandler(patterns=['*pi-*'], ignore_patterns=[], ignore_directories=True, case_sensitive=True)
     my_event_handler.on_created = on_created
@@ -658,6 +670,7 @@ if __name__ == "__main__":
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
 
+    cleanoldfiles()
     logsystemstatus()
 
     # Start watching for events...
@@ -763,6 +776,7 @@ if __name__ == "__main__":
 
             # Log system status every 5 minutes.
             if((int(time.time()) % 60) == 37):
+                cleanoldfiles()
                 logsystemstatus()
 
             time.sleep(1)
