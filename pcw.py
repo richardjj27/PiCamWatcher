@@ -16,10 +16,7 @@
 #  Add an IFTTT option
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 #  Paths in ini file shouldn't be forced to lowercase
-#  Make the cleanup function more regularly
-#  Make 'move' commands use os.command with switches to allow for overwrite
-#  Add Audio alerts for events
-#  Add option to turn this off or on.
+#  Audio alerts sometimes don't happen.
 
 # Done:
 #* Put some file rotation login in
@@ -73,6 +70,10 @@
 #* Added more info to logging.
 #* Added space left in each target to logging.
 #* Archive/purge in a thread.
+#* Make the cleanup function more regularly
+#* Make 'move' commands use os.command with switches to allow for overwrite
+#* Add Audio alerts for events
+#* Add option to turn this off or on.
 
 import time
 import threading
@@ -124,7 +125,19 @@ process_flag = int('000000000000', 2)
 # Recording     0000000001
 # Streaming     0000000010
 # Timelapsing   0000000100
-    
+
+# start         0
+# record        1
+# stream        2
+# tlapse        3
+# stoprecord    4
+# stopstream    5
+# stoptlapse    6
+# snapshot      8
+# reboot        9
+# exit          10
+#    
+
 # VIDEOPATH = "/media/usb/video"
 # IMAGEPATH = "/media/usb/picamsync/image"
 # IMAGEARCHIVEPATH = "/media/usb/imagearchive" # Real path or 'null'
@@ -453,7 +466,10 @@ def createfolder(foldername):
         pass
 
 def playsound(event):
-    os.system("aplay " + AUDIOPATH + "/" + event + ".wav>/dev/null 2>&1")
+    if(PLAYSOUND == 'true'):
+        logging.debug(f"Start Sound: {event}")
+        os.system("aplay --nonblock " + AUDIOPATH + "/" + event + ".wav>/dev/null 2>&1")
+        logging.debug(f"Finish Sound: {event}")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
@@ -564,6 +580,7 @@ def picamstartstream():
 def handler(signal_received, frame):
     # Handle any cleanup here
     logging.info("Exiting gracefully")
+    playsound("exit")
     os._exit(1)
 
 def picamstarttlapse():
@@ -649,6 +666,7 @@ if __name__ == "__main__":
     TAKESNAPSHOT = read_config(CONFIG_FILE,"STORAGE", "TAKESNAPSHOT", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
 
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
+    PLAYSOUND = read_config(CONFIG_FILE,"MISC", "PLAYSOUND", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     
     playsound("start")
 
@@ -705,6 +723,7 @@ if __name__ == "__main__":
                     time.sleep(1)
                 record_thread.join()
                 logging.info(f"Stop Recording Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                playsound("stoprecord")
                 record_thread = threading.Thread(target = picamstartrecord)
 
             if(testBit(trigger_flag, 4) != 0):
@@ -715,6 +734,7 @@ if __name__ == "__main__":
                 while testBit(process_flag, 1) != 0:
                     time.sleep(1)              
                 logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                playsound("stopstream")
                 stream_thread = threading.Thread(target = picamstartstream)   
 
             if(testBit(trigger_flag, 5) != 0):
@@ -726,6 +746,7 @@ if __name__ == "__main__":
                     time.sleep(1)                
                 tlapse_thread.join()
                 logging.info(f"Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                playsound("stoptlapse")
                 tlapse_thread = threading.Thread(target = picamstarttlapse)
 
             if(testBit(trigger_flag, 6) != 0):
@@ -771,10 +792,11 @@ if __name__ == "__main__":
             if(testBit(trigger_flag, 8) != 0):
                 # Reboot Device (bit 8)
                 logging.info("Force Reboot Instruction ")
+                playsound("reboot")
                 silentremove(WATCHPATH + "/pi-reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
 
-            # Log system status every 5 minutes.
+            # Log system status every 1 minutes.
             if((int(time.time()) % 60) == 37):
                 cleanoldfiles()
                 logsystemstatus()
