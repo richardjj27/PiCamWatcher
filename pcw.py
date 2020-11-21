@@ -126,16 +126,16 @@ process_flag = int('000000000000', 2)
 # Streaming     0000000010
 # Timelapsing   0000000100
 
-# start         0
-# record        1
-# stream        2
-# tlapse        3
-# stoprecord    4
-# stopstream    5
-# stoptlapse    6
-# snapshot      8
-# reboot        9
-# exit          10
+# start         0   A
+# record        1   R
+# stream        2   S
+# tlapse        3   T
+# stoprecord    4   O
+# stopstream    5   P
+# stoptlapse    6   Q
+# snapshot      8   I
+# reboot        9   B
+# exit          10  Z
 #    
 
 # VIDEOPATH = "/media/usb/video"
@@ -467,9 +467,9 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"Start Sound: {event}")
-        os.system("aplay --nonblock " + AUDIOPATH + "/" + event + ".wav>/dev/null 2>&1")
-        logging.debug(f"Finish Sound: {event}")
+        #logging.debug(f"Start Sound: {event}")
+        os.system("(mpg321 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
+        #logging.debug(f"Finish Sound: {event}")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
