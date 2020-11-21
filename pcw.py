@@ -63,7 +63,7 @@
 #* Do some validity checks for constants.
 #* Moved constants to config file.
 #* Added the ability to override constants from withint pi-*** files.
-#* At startup, also Use pi-*** to provide overriding conig.
+#* At startup, also Use pi-*** to provide overriding config.
 #* Make 'convert to MP4' an option (and threaded)
 #* Make config text case agnostic
 #* Added a 'log system status' function - currently runs every minute.
@@ -74,6 +74,7 @@
 #* Make 'move' commands use os.command with switches to allow for overwrite
 #* Add Audio alerts for events
 #* Add option to turn this off or on.
+#* Added 'total file count' to status config.
 
 import time
 import threading
@@ -274,9 +275,13 @@ def logsystemstatus():
     ip_left = ((IMAGEPATHLIMIT * 1048576) - ip_size)
     ap_left = ((IMAGEARCHIVEPATHLIMIT * 1048576 ) - ap_size)
 
-    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.0f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolderUsed: {((vp_size) / 1048576):,.0f}MB, Left: {((vp_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.0f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolderUsed: {((ip_size) / 1048576):,.0f}MB, Left: {((ip_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.0f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolderUsed: {((ap_size) / 1048576):,.0f}MB, Left: {((ap_left) / 1048576):,.0f}MB")
+    vp_count = len(os.listdir(VIDEOPATH))
+    ip_count = len(os.listdir(IMAGEPATH))
+    ap_count = len(os.listdir(IMAGEARCHIVEPATH))
+    
+    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.0f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolderUsed: {((vp_size) / 1048576):,.0f}MB ({vp_count}), Left: {((vp_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.0f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolderUsed: {((ip_size) / 1048576):,.0f}MB ({ip_count}), Left: {((ip_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.0f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolderUsed: {((ap_size) / 1048576):,.0f}MB ({ap_count}), Left: {((ap_left) / 1048576):,.0f}MB")
     logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.0f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
     logging.debug(f"TRIGGERFLAG  : {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
     logging.debug(f"RECORDTHREAD : {record_thread}")
