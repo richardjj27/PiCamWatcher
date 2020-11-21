@@ -133,7 +133,8 @@ process_flag = int('000000000000', 2)
 # stoprecord    4   O
 # stopstream    5   P
 # stoptlapse    6   Q
-# snapshot      8   I
+# video         7   V
+# image         8   I
 # reboot        9   B
 # exit          10  Z
 #    
@@ -515,6 +516,7 @@ def picamstartrecord():
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
         #cleanoldfiles()
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
+        playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {outputfilename + '.h264'}")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
@@ -525,7 +527,7 @@ def picamstartrecord():
                 # Take a snapshot jpg every 30 seconds
                 if((int(time.time()) % 30) == 0):
                     logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-                    playsound("snapshot")
+                    playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
@@ -608,7 +610,7 @@ def picamstarttlapse():
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
-        playsound("snapshot")
+        playsound("image")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             time.sleep(.5)
