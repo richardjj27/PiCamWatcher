@@ -282,7 +282,7 @@ def logsystemstatus():
     logging.debug(f"IMAGEPATH         VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
     logging.debug(f"IMAGEARCHIVEPATH  VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
     logging.debug(f"RUNNINGPATH       VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
-    logging.debug(f"TRIGGERFLAG       {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
+    logging.debug(f"FLAGS             TRIGGERFLAG: {trigger_flag:010b}, PROCESSFLAG: {process_flag:010b}")
     logging.debug(f"RECORDTHREAD      {record_thread}")
     logging.debug(f"STREAMTHREAD      {stream_thread}")
     logging.debug(f"TLAPSETHREAD      {tlapse_thread}")
@@ -446,14 +446,14 @@ def on_deleted(event):
 
 def silentremove(filename, message = ""):
     try:
-        logging.info(f"Deleting: {filename}{message}")
+        logging.info(f"Delete: {filename}{message}")
         os.remove(filename)
     except:
         pass
 
 def silentmove(filename, destination, message = ""):
     #try:
-    logging.info(f"Archiving: {filename}{message}")
+    logging.info(f"Archive: {filename}{message}")
     os.system("mv " + filename + " " + destination + ">/dev/null 2>&1")
         #shutil.move(filename, destination)
     #except:
@@ -489,7 +489,7 @@ def close_shutter():
 
 def converttomp4(filename):
     convertstring = "ffmpeg -r " + str(FRAMEPS) + " -i " + VIDEOPATH + "/" + filename + ".h264 -vcodec copy " + VIDEOPATH + "/" + filename + ".mp4"
-    logging.info(f"Converting : {filename} to MP4")
+    logging.info(f"Converting: {filename} to MP4")
     os.system(convertstring + " >/dev/null 2>&1")
     if(MEDIAFORMAT == "mp4"):
         silentremove(VIDEOPATH + "/" + filename + ".h264", " (converted)")
@@ -531,7 +531,7 @@ def picamstartrecord():
                 time.sleep(1)
                 # Take a snapshot jpg every 30 seconds
                 if((int(time.time()) % 30) == 0):
-                    logging.info(f"Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                    logging.info(f"Snapshot: {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         camera.stop_recording()
@@ -774,19 +774,19 @@ if __name__ == "__main__":
                     # Start Record (bit 0)
                     record_thread.start()
                     process_flag = setBit(process_flag, 0)
-                    logging.info(f"Start Recording : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"Start Recording: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 1) != 0):
                     # Start Stream (bit 1)
                     stream_thread.start()
                     process_flag = setBit(process_flag, 1)
-                    logging.info(f"Start Streaming : {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"Start Streaming: {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 2) != 0):
                     # Start TimeLapse (bit 2)
                     tlapse_thread.start()
                     process_flag = setBit(process_flag, 2)
-                    logging.info(f"Start TimeLapse : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"Start TimeLapse: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
             else:
                 open_shutter()
 
