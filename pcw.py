@@ -296,7 +296,7 @@ def cleanoldfiles():
             list_of_files = fnmatch.filter(os.listdir(VIDEOPATH), "RPi*.*")
             full_path = [VIDEOPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
-            silentremove(oldest_file, " / Free Space: " + ('{:,.2f}'.format(freespace)) + "MB")
+            silentremove(oldest_file, " (" + ('{:,.2f}'.format(freespace)) + "MB)")
             freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     
     # clean image files (based on folder size) > archive
@@ -307,9 +307,9 @@ def cleanoldfiles():
             full_path = [IMAGEPATH + "/{0}".format(x) for x in list_of_files]
             oldest_file = min(full_path, key=os.path.getctime)
             if(IMAGEARCHIVEPATH.lower() != "null"):
-                silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
+                silentmove(oldest_file, IMAGEARCHIVEPATH, " (" + ('{:,.2f}'.format(imageusedspace)) + "MB)")
             else:
-                silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
+                silentremove(oldest_file, " (" + ('{:,.2f}'.format(imageusedspace)) + "MB)")
             imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file()) / 1048576)
 
     # clean archive image files (based on folder size) > trash
@@ -320,7 +320,7 @@ def cleanoldfiles():
                 list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
                 full_path = [IMAGEARCHIVEPATH + "/{0}".format(x) for x in list_of_files]
                 oldest_file = min(full_path, key=os.path.getctime)
-                silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
+                silentremove(oldest_file, " (" + ('{:,.2f}'.format(imageusedspace)) + "MB)")
                 imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file()) / 1048576)
 
 def testBit(int_type, offset):
@@ -500,6 +500,7 @@ def picamstartrecord():
     global record_thread
 
     playsound("record")
+    timelapsedelta = 0
 
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
@@ -514,8 +515,8 @@ def picamstartrecord():
     videoprefix = "RPiR-"
 
     # add a delay to ensure recording starts > 5 and < 55 to avoid clashing with the snapshot image.
-    while (int(time.time()) % 60 <= 5 or int(time.time()) % 60 >= 55):
-        time.sleep(5)
+    # while (int(time.time()) % 60 <= 5 or int(time.time()) % 60 >= 55):
+    #     time.sleep(5)
 
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
@@ -523,17 +524,18 @@ def picamstartrecord():
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {outputfilename + '.h264'}")
+        logging.info(f"Recording: {VIDEOPATH}/{outputfilename}.h264")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if(TAKESNAPSHOT == 'true'):
-                time.sleep(1)
-                # Take a snapshot jpg every 30 seconds
-                if((int(time.time()) % 30) == 0):
+                time.sleep(.5)
+                # Take a snapshot jpg every {SNAPSHOTINTERVAL} seconds
+                if(int(time.time() / SNAPSHOTINTERVAL) > timelapsedelta):
                     logging.info(f"Snapshot: {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+                    timelapsedelta = (int(time.time() / SNAPSHOTINTERVAL))
         camera.stop_recording()
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), daemon = True)
@@ -663,6 +665,8 @@ if __name__ == "__main__":
 
     VIDEOINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "30")) # 1 > 30
     TIMELAPSEINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
+    SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
+
     STREAMPORT = int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
     TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     MEDIAFORMAT = read_config(CONFIG_FILE,"OUTPUT", "MEDIAFORMAT", "(?:^|(?<= ))(h264|mp4|both)(?:(?= )|$)", "h264") # True|False
