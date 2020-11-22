@@ -13,10 +13,11 @@
 #  Tidy up imports - learn
 #  Clean up the code and make more pythony - learn.
 #  Check the regex constant validation.
-#  Add an IFTTT option
+#  Add an IFTTT option.
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 #  Paths in ini file shouldn't be forced to lowercase
 #  Audio alerts sometimes don't happen.
+#  Occassionally gets stuck in a loop.  Not sure why.  Needs a debug.
 
 # Done:
 #* Put some file rotation login in
@@ -250,16 +251,14 @@ def get_foldersize(start_path = '.'):
     return total_size
 
 def logsystemstatus():             
-    #global record_thread
-    #global tlapse_thread
-    #global stream_thread
     # Log Temperature
+    logging.debug("========================================================================================")
     if(CPUTemperature().temperature) > 65:
-        logging.warning(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+        logging.warning(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
     elif (CPUTemperature().temperature) < 55:
-        logging.debug(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+        logging.debug(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
     else:       
-        logging.info(f"Temperature = {(CPUTemperature().temperature):.1f}°C")
+        logging.info(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
 
     # Log disk capacity usage
     vp_usage = shutil.disk_usage(VIDEOPATH)
@@ -279,15 +278,16 @@ def logsystemstatus():
     ip_count = len(os.listdir(IMAGEPATH))
     ap_count = len(os.listdir(IMAGEARCHIVEPATH))
     
-    logging.debug(f"VIDEOPATH         VolSize: {((vp_usage.total) / 1048576):,.0f}MB, VolFree: {((vp_usage.free) / 1048576):,.0f}MB, VolUsed: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolderUsed: {((vp_size) / 1048576):,.0f}MB ({vp_count}), Left: {((vp_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEPATH         VolSize: {((ip_usage.total) / 1048576):,.0f}MB, VolFree: {((ip_usage.free) / 1048576):,.0f}MB, VolUsed: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolderUsed: {((ip_size) / 1048576):,.0f}MB ({ip_count}), Left: {((ip_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEARCHIVEPATH  VolSize: {((ap_usage.total) / 1048576):,.0f}MB, VolFree: {((ap_usage.free) / 1048576):,.0f}MB, VolUsed: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolderUsed: {((ap_size) / 1048576):,.0f}MB ({ap_count}), Left: {((ap_left) / 1048576):,.0f}MB")
-    logging.debug(f"RUNNINGPATH       VolSize: {((rp_usage.total) / 1048576):,.0f}MB, VolFree: {((rp_usage.free) / 1048576):,.0f}MB, VolUsed: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
-    logging.debug(f"TRIGGERFLAG  : {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
-    logging.debug(f"RECORDTHREAD : {record_thread}")
-    logging.debug(f"STREAMTHREAD : {stream_thread}")
-    logging.debug(f"TLAPSETHREAD : {tlapse_thread}")
-    
+    logging.debug(f"VIDEOPATH         VolS: {((vp_usage.total) / 1048576):,.0f}MB, VolF: {((vp_usage.free) / 1048576):,.0f}MB, VolU: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolU: {((vp_size) / 1048576):,.0f}MB ({vp_count}), FolF: {((vp_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEPATH         VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
+    logging.debug(f"IMAGEARCHIVEPATH  VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
+    logging.debug(f"RUNNINGPATH       VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
+    logging.debug(f"TRIGGERFLAG       {trigger_flag:010b}, PROCESSFLAG : {process_flag:010b}")
+    logging.debug(f"RECORDTHREAD      {record_thread}")
+    logging.debug(f"STREAMTHREAD      {stream_thread}")
+    logging.debug(f"TLAPSETHREAD      {tlapse_thread}")
+    logging.debug("========================================================================================")
+
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     # clean video files (based on free space) > trash
@@ -300,7 +300,7 @@ def cleanoldfiles():
             freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
     
     # clean image files (based on folder size) > archive
-    imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
+    imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file()) / 1048576)
     if(imageusedspace > IMAGEPATHLIMIT):
         while (imageusedspace > IMAGEPATHLIMIT):
             list_of_files = fnmatch.filter(os.listdir(IMAGEPATH), "RPi*.*")
@@ -310,18 +310,18 @@ def cleanoldfiles():
                 silentmove(oldest_file, IMAGEARCHIVEPATH, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
             else:
                 silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
-            imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file())/1048576)
+            imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEPATH) if d.is_file()) / 1048576)
 
     # clean archive image files (based on folder size) > trash
     if(IMAGEARCHIVEPATH.lower() != "null"):
-        imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
+        imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file()) / 1048576)
         if(imageusedspace > IMAGEARCHIVEPATHLIMIT):
             while (imageusedspace > IMAGEARCHIVEPATHLIMIT):
                 list_of_files = fnmatch.filter(os.listdir(IMAGEARCHIVEPATH), "RPi*.*")
                 full_path = [IMAGEARCHIVEPATH + "/{0}".format(x) for x in list_of_files]
                 oldest_file = min(full_path, key=os.path.getctime)
                 silentremove(oldest_file, " / Used Space: " + ('{:,.2f}'.format(imageusedspace)) + "MB")
-                imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file())/1048576)
+                imageusedspace = (sum(d.stat().st_size for d in os.scandir(IMAGEARCHIVEPATH) if d.is_file()) / 1048576)
 
 def testBit(int_type, offset):
     # testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.
