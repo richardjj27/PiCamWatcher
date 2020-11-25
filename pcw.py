@@ -99,6 +99,7 @@ from signal import signal, SIGINT
 from sys import exit
 import configparser
 import re
+import subprocess
 
 global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH, IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH, AUDIOPATH
 global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
@@ -242,7 +243,6 @@ def get_foldersize(start_path = '.'):
     for dirpath, dirnames, filenames in os.walk(start_path):
         for f in filenames:
             fp = os.path.join(dirpath, f)
-            # skip if it is symbolic link
             if not os.path.islink(fp):
                 try:
                     total_size += os.path.getsize(fp)
@@ -399,6 +399,7 @@ def on_created(event):
 
         VIDEOINTERVAL = int(read_config(event.src_path, "OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "retain", VIDEOINTERVAL)) # 1 > 30
         TIMELAPSEINTERVAL = int(read_config(event.src_path, "OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", TIMELAPSEINTERVAL)) # 5 > 30
+        SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 15 > 30
         STREAMPORT = int(read_config(event.src_path, "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT)) # 30000 > 65535
         TIMESTAMP = read_config(event.src_path, "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
 
@@ -473,17 +474,17 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        #logging.debug(f"Start Sound: {event}")
-        os.system("(mpg321 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
-        #logging.debug(f"Finish Sound: {event}")
+        logging.debug(f"Start Sound: {event}")
+        os.system("(mpg321 -g 10 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
+        logging.debug(f"Finish Sound: {event}")
 
 def open_shutter():
-    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 25) == 3):
         # logging.info("shutter open")
         os.system(BINARYPATH + "/shutter 99 >/dev/null 2>&1")
 
 def close_shutter():
-    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 5) == 3):
+    if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 25) == 3):
         # logging.info("shutter closed")
         os.system(BINARYPATH + "/shutter 0 >/dev/null 2>&1")
 
@@ -531,11 +532,11 @@ def picamstartrecord():
             if(TAKESNAPSHOT == 'true'):
                 time.sleep(.5)
                 # Take a snapshot jpg every {SNAPSHOTINTERVAL} seconds
-                if(int(time.time() / SNAPSHOTINTERVAL) > timelapsedelta):
+                if(int((time.time() + 5) / SNAPSHOTINTERVAL) > timelapsedelta):
                     logging.info(f"Snapshot: {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-                    timelapsedelta = (int(time.time() / SNAPSHOTINTERVAL))
+                    timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))
         camera.stop_recording()
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), daemon = True)
@@ -665,7 +666,7 @@ if __name__ == "__main__":
 
     VIDEOINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "30")) # 1 > 30
     TIMELAPSEINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
-    SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 5 > 30
+    SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 15 > 30
 
     STREAMPORT = int(read_config(CONFIG_FILE,"OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "42687")) # 30000 > 65535
     TIMESTAMP =  read_config(CONFIG_FILE,"OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
@@ -699,8 +700,8 @@ if __name__ == "__main__":
         createfolder(IMAGEARCHIVEPATH)
     createfolder(WATCHPATH)
 
-    cleanoldfiles()
-    logsystemstatus()
+    # cleanoldfiles()
+    # logsystemstatus()
 
     # Start watching for events...
     my_observer.start()
@@ -723,8 +724,22 @@ if __name__ == "__main__":
         # Delete everything.
         silentremoveexcept(WATCHPATH, "pi-^^^")
 
+    statuslapsedelta = 0
+
+    # if(int(time.time() / SNAPSHOTINTERVAL) > timelapsedelta):
+    #     logging.info(f"Snapshot: {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+    #     playsound("image")
+    #     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
+    #     timelapsedelta = (int(time.time() / SNAPSHOTINTERVAL))
+
     try:
         while True:
+            # Log system status every 1 minutes.
+            if(int((time.time() + 15) / 60) > statuslapsedelta):
+                cleanoldfiles()
+                logsystemstatus()
+                statuslapsedelta = (int((time.time() + 15) / 60))
+            
             if(testBit(trigger_flag, 3) != 0):
                 # Stop Record (bit 3)
                 trigger_flag = clearBit(trigger_flag, 3)
@@ -806,11 +821,6 @@ if __name__ == "__main__":
                 playsound("reboot")
                 silentremove(WATCHPATH + "/pi-reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
-
-            # Log system status every 1 minutes.
-            if((int(time.time()) % 60) == 37):
-                cleanoldfiles()
-                logsystemstatus()
 
             time.sleep(1)
 
