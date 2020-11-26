@@ -99,7 +99,6 @@ from signal import signal, SIGINT
 from sys import exit
 import configparser
 import re
-import subprocess
 
 global RUNNINGPATH, BINARYPATH,LOGPATH, VIDEOPATH, IMAGEPATH, IMAGEARCHIVEPATH, WATCHPATH, AUDIOPATH
 global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
@@ -380,7 +379,7 @@ def read_config(config_file, section, item, rule, default, retain = ""):
 def on_created(event):
     global trigger_flag
     global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATION, QUALITY
-    global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
+    global VIDEOINTERVAL, TIMELAPSEINTERVAL, SNAPSHOTINTERVAL, STREAMPORT, TIMESTAMP
 
     # check for constants changed in new trigger file.
 
@@ -400,6 +399,7 @@ def on_created(event):
         VIDEOINTERVAL = int(read_config(event.src_path, "OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "retain", VIDEOINTERVAL)) # 1 > 30
         TIMELAPSEINTERVAL = int(read_config(event.src_path, "OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", TIMELAPSEINTERVAL)) # 5 > 30
         SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 15 > 30
+
         STREAMPORT = int(read_config(event.src_path, "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT)) # 30000 > 65535
         TIMESTAMP = read_config(event.src_path, "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
 
@@ -474,9 +474,9 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"Start Sound: {event}")
-        os.system("(mpg321 -g 10 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
-        logging.debug(f"Finish Sound: {event}")
+        # logging.debug(f"Start Sound: {event}")
+        os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
+        # logging.debug(f"Finish Sound: {event}")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 25) == 3):
@@ -503,6 +503,8 @@ def picamstartrecord():
     playsound("record")
     timelapsedelta = 0
 
+    #logging.info("1")
+
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
@@ -515,6 +517,8 @@ def picamstartrecord():
         camera.annotate_background = picamera.Color('black')
     videoprefix = "RPiR-"
 
+    #logging.info("2")
+
     # add a delay to ensure recording starts > 5 and < 55 to avoid clashing with the snapshot image.
     # while (int(time.time()) % 60 <= 5 or int(time.time()) % 60 >= 55):
     #     time.sleep(5)
@@ -522,11 +526,15 @@ def picamstartrecord():
     while (testBit(trigger_flag, 0) != 0):
         filetime = int(time.time() / (VIDEOINTERVAL * 60))
         #cleanoldfiles()
+        
+        #logging.info("3")
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"Recording: {VIDEOPATH}/{outputfilename}.h264")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
+            
+            #logging.info("4")
             if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if(TAKESNAPSHOT == 'true'):
@@ -539,11 +547,15 @@ def picamstartrecord():
                     timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))
         camera.stop_recording()
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
-            convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), daemon = True)
+            convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), name = 'convert_thread', daemon = True)
             convert_thread.start()
+            logging.debug(f"CONVERTTHREAD     {convert_thread}")
 
+    #logging.info("5")
     camera.close()
     process_flag = clearBit(process_flag, 0)
+    
+    #logging.info("6")
     time.sleep(1)
 
 def picamstartstream():
@@ -689,9 +701,9 @@ if __name__ == "__main__":
     my_observer = Observer()
     my_observer.schedule(my_event_handler, WATCHPATH, recursive=False)
 
-    record_thread = threading.Thread(target = picamstartrecord)
-    stream_thread = threading.Thread(target = picamstartstream)          
-    tlapse_thread = threading.Thread(target = picamstarttlapse)
+    record_thread = threading.Thread(target = picamstartrecord, name = 'record_thread')
+    stream_thread = threading.Thread(target = picamstartstream, name = 'stream_thread')
+    tlapse_thread = threading.Thread(target = picamstarttlapse, name = 'tlapse_thread')
 
     # Create any missing, transient folders
     createfolder(VIDEOPATH)
@@ -743,14 +755,14 @@ if __name__ == "__main__":
             if(testBit(trigger_flag, 3) != 0):
                 # Stop Record (bit 3)
                 trigger_flag = clearBit(trigger_flag, 3)
-                logging.info(f"Stop Recording Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}") 
-                trigger_flag = clearBit(trigger_flag, 0)             
+                logging.info(f"Stop Recording Triggered: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}") 
+                trigger_flag = clearBit(trigger_flag, 0)
                 while testBit(process_flag, 0) != 0:
                     time.sleep(1)
                 record_thread.join()
-                logging.info(f"Stop Recording Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"Stop Recording Completed: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoprecord")
-                record_thread = threading.Thread(target = picamstartrecord)
+                record_thread = threading.Thread(target = picamstartrecord, name = 'record_thread')
 
             if(testBit(trigger_flag, 4) != 0):
                 # Stop Stream (bit 4)
@@ -758,10 +770,10 @@ if __name__ == "__main__":
                 logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 trigger_flag = clearBit(trigger_flag, 1)
                 while testBit(process_flag, 1) != 0:
-                    time.sleep(1)              
+                    time.sleep(1)
                 logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 playsound("stopstream")
-                stream_thread = threading.Thread(target = picamstartstream)   
+                stream_thread = threading.Thread(target = picamstartstream, name = 'stream_thread')   
 
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
@@ -773,7 +785,7 @@ if __name__ == "__main__":
                 tlapse_thread.join()
                 logging.info(f"Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoptlapse")
-                tlapse_thread = threading.Thread(target = picamstarttlapse)
+                tlapse_thread = threading.Thread(target = picamstarttlapse, name = 'tlapse_thread')
 
             if(testBit(trigger_flag, 6) != 0):
                 # Stop everything (bit 6)
