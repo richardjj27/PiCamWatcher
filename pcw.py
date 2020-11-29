@@ -18,6 +18,8 @@
 #  Paths in ini file shouldn't be forced to lowercase
 #  Audio alerts sometimes don't happen.
 #  Occassionally gets stuck in a loop.  Not sure why.  Needs a debug.
+#  The initial convert of a record seems a bit early.
+#  Try unclocking the Pi.
 
 # Done:
 #* Put some file rotation login in
@@ -76,6 +78,7 @@
 #* Add Audio alerts for events
 #* Add option to turn this off or on.
 #* Added 'total file count' to status config.
+#* Close shutter on exit.
 
 import time
 import threading
@@ -251,13 +254,15 @@ def get_foldersize(start_path = '.'):
 
 def logsystemstatus():             
     # Log Temperature
-    logging.debug("========================================================================================")
-    if(CPUTemperature().temperature) > 65:
-        logging.warning(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
-    elif (CPUTemperature().temperature) < 55:
-        logging.debug(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
+    #logging.debug("========================================================================================")
+    if(CPUTemperature().temperature) > 75:
+        logging.warning(f"***TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
+    elif (CPUTemperature().temperature) > 65:
+        logging.debug(f" **TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
+    elif (CPUTemperature().temperature) > 55:
+        logging.debug(f"  *TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
     else:       
-        logging.info(f"TEMPERATURE       {(CPUTemperature().temperature):.1f}°C")
+        logging.info(f"  *TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
 
     # Log disk capacity usage
     vp_usage = shutil.disk_usage(VIDEOPATH)
@@ -277,15 +282,15 @@ def logsystemstatus():
     ip_count = len(os.listdir(IMAGEPATH))
     ap_count = len(os.listdir(IMAGEARCHIVEPATH))
     
-    logging.debug(f"VIDEOPATH         VolS: {((vp_usage.total) / 1048576):,.0f}MB, VolF: {((vp_usage.free) / 1048576):,.0f}MB, VolU: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolU: {((vp_size) / 1048576):,.0f}MB ({vp_count}), FolF: {((vp_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEPATH         VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
-    logging.debug(f"IMAGEARCHIVEPATH  VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
-    logging.debug(f"RUNNINGPATH       VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
-    logging.debug(f"FLAGS             TRIGGERFLAG: {trigger_flag:010b}, PROCESSFLAG: {process_flag:010b}")
-    logging.debug(f"RECORDTHREAD      {record_thread}")
-    logging.debug(f"STREAMTHREAD      {stream_thread}")
-    logging.debug(f"TLAPSETHREAD      {tlapse_thread}")
-    logging.debug("========================================================================================")
+    logging.debug(f"   VIDEOPATH        VolS: {((vp_usage.total) / 1048576):,.0f}MB, VolF: {((vp_usage.free) / 1048576):,.0f}MB, VolU: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolU: {((vp_size) / 1048576):,.0f}MB ({vp_count}), FolF: {((vp_left) / 1048576):,.0f}MB")
+    logging.debug(f"   IMAGEPATH        VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
+    logging.debug(f"   IMAGEARCHIVEPATH VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
+    logging.debug(f"   RUNNINGPATH      VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
+    logging.debug(f"   FLAGS            TRIGGERFLAG: {trigger_flag:010b}, PROCESSFLAG: {process_flag:010b}")
+    logging.debug(f"   RECORDTHREAD     {record_thread}")
+    logging.debug(f"   STREAMTHREAD     {stream_thread}")
+    logging.debug(f"   TLAPSETHREAD     {tlapse_thread}")
+    #logging.debug("========================================================================================")
 
 def cleanoldfiles():
     freespace = shutil.disk_usage(VIDEOPATH).free / 1048576
@@ -373,7 +378,7 @@ def read_config(config_file, section, item, rule, default, retain = ""):
 
     # if the value is new or has changed, log it.
     if(output != retain):
-        logging.debug(f"{item} = {output}")
+        logging.debug(f"   {item} = {output}")
     return output
 
 def on_created(event):
@@ -447,14 +452,14 @@ def on_deleted(event):
 
 def silentremove(filename, message = ""):
     try:
-        logging.info(f"Delete: {filename}{message}")
+        logging.info(f"   Delete: {filename}{message}")
         os.remove(filename)
     except:
         pass
 
 def silentmove(filename, destination, message = ""):
     #try:
-    logging.info(f"Archive: {filename}{message}")
+    logging.info(f"   Archive: {filename}{message}")
     os.system("mv " + filename + " " + destination + ">/dev/null 2>&1")
         #shutil.move(filename, destination)
     #except:
@@ -468,7 +473,7 @@ def silentremoveexcept(keeppath, keepfilename):
 def createfolder(foldername):
     try:
         os.makedirs(foldername)
-        logging.info(f"Create Folder: {foldername}")
+        logging.info(f"   Create Folder: {foldername}")
     except:
         pass
 
@@ -549,7 +554,7 @@ def picamstartrecord():
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), name = 'convert_thread', daemon = True)
             convert_thread.start()
-            logging.debug(f"CONVERTTHREAD     {convert_thread}")
+            logging.debug(f"   CONVERTTHREAD     {convert_thread}")
 
     #logging.info("5")
     camera.close()
@@ -582,7 +587,7 @@ def picamstartstream():
             server = StreamingServer(address, StreamingHandler)
             threadstream = threading.Thread(target = server.serve_forever)
             threadstream.daemon = True
-            logging.info(f"Open Streaming on port {STREAMPORT}")
+            logging.info(f"   Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while (testBit(trigger_flag, 1) != 0):
                 if(TIMESTAMP == 'true'):
@@ -602,6 +607,7 @@ def picamstartstream():
 def handler(signal_received, frame):
     # Handle any cleanup here
     logging.info("Exiting gracefully")
+    close_shutter()
     playsound("exit")
     os._exit(1)
 
@@ -626,10 +632,10 @@ def picamstarttlapse():
     #filetime = int(time.time() / TIMELAPSEINTERVAL)
     while (testBit(trigger_flag, 2) != 0):
         filetime = int(time.time() / TIMELAPSEINTERVAL)
-        cleanoldfiles()
+        #cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        logging.info(f"   Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         playsound("image")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
@@ -656,10 +662,10 @@ if __name__ == "__main__":
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-    logging.debug(f"RUNNINGPATH = {RUNNINGPATH}")
-    logging.debug(f"LOGPATH = {LOGPATH}")
-    logging.debug(f"BINARYPATH = {BINARYPATH}")
-    logging.debug(f"CONFIG_FILE = {CONFIG_FILE}")
+    logging.debug(f"   RUNNINGPATH = {RUNNINGPATH}")
+    logging.debug(f"   LOGPATH = {LOGPATH}")
+    logging.debug(f"   BINARYPATH = {BINARYPATH}")
+    logging.debug(f"   CONFIG_FILE = {CONFIG_FILE}")
 
     VIDEOPATH = read_config(CONFIG_FILE,"PATH", "VIDEOPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
     IMAGEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
