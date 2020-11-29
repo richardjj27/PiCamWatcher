@@ -20,6 +20,10 @@
 #  Occassionally gets stuck in a loop.  Not sure why.  Needs a debug.
 #  The initial convert of a record seems a bit early.
 #  Try unclocking the Pi.
+#  Camera stopping issues:
+#   The conversion thread?
+#   Video and image at the same time.
+#   A hardware issue?
 
 # Done:
 #* Put some file rotation login in
@@ -258,11 +262,11 @@ def logsystemstatus():
     if(CPUTemperature().temperature) > 75:
         logging.warning(f"***TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
     elif (CPUTemperature().temperature) > 65:
-        logging.debug(f" **TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
+        logging.debug(f"#**TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
     elif (CPUTemperature().temperature) > 55:
-        logging.debug(f"  *TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
+        logging.debug(f"# *TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
     else:       
-        logging.info(f"  *TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
+        logging.info(f"#  TEMPERATURE      {(CPUTemperature().temperature):.1f}°C")
 
     # Log disk capacity usage
     vp_usage = shutil.disk_usage(VIDEOPATH)
@@ -282,14 +286,14 @@ def logsystemstatus():
     ip_count = len(os.listdir(IMAGEPATH))
     ap_count = len(os.listdir(IMAGEARCHIVEPATH))
     
-    logging.debug(f"   VIDEOPATH        VolS: {((vp_usage.total) / 1048576):,.0f}MB, VolF: {((vp_usage.free) / 1048576):,.0f}MB, VolU: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolU: {((vp_size) / 1048576):,.0f}MB ({vp_count}), FolF: {((vp_left) / 1048576):,.0f}MB")
-    logging.debug(f"   IMAGEPATH        VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
-    logging.debug(f"   IMAGEARCHIVEPATH VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
-    logging.debug(f"   RUNNINGPATH      VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
-    logging.debug(f"   FLAGS            TRIGGERFLAG: {trigger_flag:010b}, PROCESSFLAG: {process_flag:010b}")
-    logging.debug(f"   RECORDTHREAD     {record_thread}")
-    logging.debug(f"   STREAMTHREAD     {stream_thread}")
-    logging.debug(f"   TLAPSETHREAD     {tlapse_thread}")
+    logging.debug(f"#  VIDEOPATH        VolS: {((vp_usage.total) / 1048576):,.0f}MB, VolF: {((vp_usage.free) / 1048576):,.0f}MB, VolU: {((vp_usage.used / vp_usage.total) * 100):.1f}%, FolU: {((vp_size) / 1048576):,.0f}MB ({vp_count}), FolF: {((vp_left) / 1048576):,.0f}MB")
+    logging.debug(f"#  IMAGEPATH        VolS: {((ip_usage.total) / 1048576):,.0f}MB, VolF: {((ip_usage.free) / 1048576):,.0f}MB, VolU: {((ip_usage.used / ip_usage.total) * 100):.1f}%, FolU: {((ip_size) / 1048576):,.0f}MB ({ip_count}), FolF: {((ip_left) / 1048576):,.0f}MB")
+    logging.debug(f"#  IMAGEARCHIVEPATH VolS: {((ap_usage.total) / 1048576):,.0f}MB, VolF: {((ap_usage.free) / 1048576):,.0f}MB, VolU: {((ap_usage.used / ap_usage.total) * 100):.1f}%, FolU: {((ap_size) / 1048576):,.0f}MB ({ap_count}), FolF: {((ap_left) / 1048576):,.0f}MB")
+    logging.debug(f"#  RUNNINGPATH      VolS: {((rp_usage.total) / 1048576):,.0f}MB, VolF: {((rp_usage.free) / 1048576):,.0f}MB, VolU: {((rp_usage.used / rp_usage.total) * 100):.1f}%")
+    logging.debug(f"#  FLAGS            TRIGGERFLAG: {trigger_flag:010b}, PROCESSFLAG: {process_flag:010b}")
+    logging.debug(f"#  RECORDTHREAD     {record_thread}")
+    logging.debug(f"#  STREAMTHREAD     {stream_thread}")
+    logging.debug(f"#  TLAPSETHREAD     {tlapse_thread}")
     #logging.debug("========================================================================================")
 
 def cleanoldfiles():
@@ -378,7 +382,7 @@ def read_config(config_file, section, item, rule, default, retain = ""):
 
     # if the value is new or has changed, log it.
     if(output != retain):
-        logging.debug(f"   {item} = {output}")
+        logging.debug(f"%  {item} = {output}")
     return output
 
 def on_created(event):
@@ -452,14 +456,14 @@ def on_deleted(event):
 
 def silentremove(filename, message = ""):
     try:
-        logging.info(f"   Delete: {filename}{message}")
+        logging.info(f"D  Delete: {filename}{message}")
         os.remove(filename)
     except:
         pass
 
 def silentmove(filename, destination, message = ""):
     #try:
-    logging.info(f"   Archive: {filename}{message}")
+    logging.info(f"A  Archive: {filename}{message}")
     os.system("mv " + filename + " " + destination + ">/dev/null 2>&1")
         #shutil.move(filename, destination)
     #except:
@@ -536,7 +540,7 @@ def picamstartrecord():
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"Recording: {VIDEOPATH}/{outputfilename}.h264")
+        logging.info(f"V  Recording: {VIDEOPATH}/{outputfilename}.h264")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             
             #logging.info("4")
@@ -546,7 +550,7 @@ def picamstartrecord():
                 time.sleep(.5)
                 # Take a snapshot jpg every {SNAPSHOTINTERVAL} seconds
                 if(int((time.time() + 5) / SNAPSHOTINTERVAL) > timelapsedelta):
-                    logging.info(f"Snapshot: {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+                    logging.info(f"I  Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
                     timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))
@@ -554,7 +558,7 @@ def picamstartrecord():
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), name = 'convert_thread', daemon = True)
             convert_thread.start()
-            logging.debug(f"   CONVERTTHREAD     {convert_thread}")
+            logging.debug(f"#  CONVERTTHREAD     {convert_thread}")
 
     #logging.info("5")
     camera.close()
@@ -587,7 +591,7 @@ def picamstartstream():
             server = StreamingServer(address, StreamingHandler)
             threadstream = threading.Thread(target = server.serve_forever)
             threadstream.daemon = True
-            logging.info(f"   Open Streaming on port {STREAMPORT}")
+            logging.info(f"S  Open Streaming on port {STREAMPORT}")
             threadstream.start()
             while (testBit(trigger_flag, 1) != 0):
                 if(TIMESTAMP == 'true'):
@@ -635,7 +639,7 @@ def picamstarttlapse():
         #cleanoldfiles()
         if(TIMESTAMP == 'true'):
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"   Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
+        logging.info(f"I  Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         playsound("image")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
@@ -662,10 +666,10 @@ if __name__ == "__main__":
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
 
-    logging.debug(f"   RUNNINGPATH = {RUNNINGPATH}")
-    logging.debug(f"   LOGPATH = {LOGPATH}")
-    logging.debug(f"   BINARYPATH = {BINARYPATH}")
-    logging.debug(f"   CONFIG_FILE = {CONFIG_FILE}")
+    logging.debug(f"%  RUNNINGPATH = {RUNNINGPATH}")
+    logging.debug(f"%  LOGPATH = {LOGPATH}")
+    logging.debug(f"%  BINARYPATH = {BINARYPATH}")
+    logging.debug(f"%  CONFIG_FILE = {CONFIG_FILE}")
 
     VIDEOPATH = read_config(CONFIG_FILE,"PATH", "VIDEOPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
     IMAGEPATH = read_config(CONFIG_FILE,"PATH", "IMAGEPATH", "^/|(/[\w-]+)+$", "terminate") # reasonable file path with no trailing slash
@@ -761,35 +765,35 @@ if __name__ == "__main__":
             if(testBit(trigger_flag, 3) != 0):
                 # Stop Record (bit 3)
                 trigger_flag = clearBit(trigger_flag, 3)
-                logging.info(f"Stop Recording Triggered: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}") 
+                logging.info(f"   Stop Recording Triggered: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}") 
                 trigger_flag = clearBit(trigger_flag, 0)
                 while testBit(process_flag, 0) != 0:
                     time.sleep(1)
                 record_thread.join()
-                logging.info(f"Stop Recording Completed: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"   Stop Recording Completed: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoprecord")
                 record_thread = threading.Thread(target = picamstartrecord, name = 'record_thread')
 
             if(testBit(trigger_flag, 4) != 0):
                 # Stop Stream (bit 4)
                 trigger_flag = clearBit(trigger_flag, 4)
-                logging.info(f"Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"   Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 trigger_flag = clearBit(trigger_flag, 1)
                 while testBit(process_flag, 1) != 0:
                     time.sleep(1)
-                logging.info(f"Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"   Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 playsound("stopstream")
                 stream_thread = threading.Thread(target = picamstartstream, name = 'stream_thread')   
 
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
                 trigger_flag = clearBit(trigger_flag, 5)
-                logging.info(f"Stop TimeLapse Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
+                logging.info(f"   Stop TimeLapse Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
                 trigger_flag = clearBit(trigger_flag, 2) 
                 while testBit(process_flag, 2) != 0:
                     time.sleep(1)                
                 tlapse_thread.join()
-                logging.info(f"Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"   Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoptlapse")
                 tlapse_thread = threading.Thread(target = picamstarttlapse, name = 'tlapse_thread')
 
@@ -805,25 +809,25 @@ if __name__ == "__main__":
                 close_shutter()
                 
                 if((int(time.time()) % 10) == 5):
-                    logging.debug(f"Waiting for something to do.")
+                    logging.debug(f"   Waiting for something to do.")
           
                 if(testBit(trigger_flag, 0) != 0):
                     # Start Record (bit 0)
                     record_thread.start()
                     process_flag = setBit(process_flag, 0)
-                    logging.info(f"Start Recording: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"   Start Recording: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 1) != 0):
                     # Start Stream (bit 1)
                     stream_thread.start()
                     process_flag = setBit(process_flag, 1)
-                    logging.info(f"Start Streaming: {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"   Start Streaming: {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 2) != 0):
                     # Start TimeLapse (bit 2)
                     tlapse_thread.start()
                     process_flag = setBit(process_flag, 2)
-                    logging.info(f"Start TimeLapse: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"   Start TimeLapse: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
             else:
                 open_shutter()
 
