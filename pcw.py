@@ -24,6 +24,7 @@
 #   The conversion thread?
 #   Video and image at the same time.
 #   A hardware issue?
+# Start recording a bit faster.  Seems to take about 1 minute to get going.
 
 # Done:
 #* Put some file rotation login in
@@ -641,7 +642,7 @@ def picamstarttlapse():
             camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         logging.info(f"I  Take Timelapse Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
         playsound("image")
-        camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')   
+        camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
             time.sleep(.5)
     camera.close()
