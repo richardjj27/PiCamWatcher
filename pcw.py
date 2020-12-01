@@ -16,14 +16,7 @@
 #  Add an IFTTT option.
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 #  Paths in ini file shouldn't be forced to lowercase
-#  Audio alerts sometimes don't happen.
-#  Occassionally gets stuck in a loop.  Not sure why.  Needs a debug.
 #  The initial convert of a record seems a bit early.
-#  Try unclocking the Pi.
-#  Camera stopping issues:
-#   The conversion thread?
-#   Video and image at the same time.
-#   A hardware issue?
 # Start recording a bit faster.  Seems to take about 1 minute to get going.
 
 # Done:
@@ -408,7 +401,7 @@ def on_created(event):
 
         VIDEOINTERVAL = int(read_config(event.src_path, "OUTPUT", "VIDEOINTERVAL", "^([1-9]|[12][0-9]|30)$", "retain", VIDEOINTERVAL)) # 1 > 30
         TIMELAPSEINTERVAL = int(read_config(event.src_path, "OUTPUT", "TIMELAPSEINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", TIMELAPSEINTERVAL)) # 5 > 30
-        SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "30")) # 15 > 30
+        SNAPSHOTINTERVAL = int(read_config(CONFIG_FILE,"OUTPUT", "SNAPSHOTINTERVAL", "^([5-9]|[12][0-9]|30)$", "retain", SNAPSHOTINTERVAL)) # 15 > 30
 
         STREAMPORT = int(read_config(event.src_path, "OUTPUT", "STREAMPORT", "^([3-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$", "retain", STREAMPORT)) # 30000 > 65535
         TIMESTAMP = read_config(event.src_path, "OUTPUT", "TIMESTAMP", "(?:^|(?<= ))(True|False)(?:(?= )|$)", "retain", TIMESTAMP) # True|False
@@ -484,9 +477,9 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        # logging.debug(f"Start Sound: {event}")
+        logging.debug(f"=Start Sound: {event}")
         os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
-        # logging.debug(f"Finish Sound: {event}")
+        logging.debug(f"=Finish Sound: {event}")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 25) == 3):
@@ -541,7 +534,7 @@ def picamstartrecord():
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"V  Recording: {VIDEOPATH}/{outputfilename}.h264")
+        logging.info(f"V  Start Recording Video : {VIDEOPATH}/{outputfilename}.h264")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             
             #logging.info("4")
@@ -592,7 +585,7 @@ def picamstartstream():
             server = StreamingServer(address, StreamingHandler)
             threadstream = threading.Thread(target = server.serve_forever)
             threadstream.daemon = True
-            logging.info(f"S  Open Streaming on port {STREAMPORT}")
+            logging.info(f"S  Open Streaming on port : {STREAMPORT}")
             threadstream.start()
             while (testBit(trigger_flag, 1) != 0):
                 if(TIMESTAMP == 'true'):
@@ -766,35 +759,35 @@ if __name__ == "__main__":
             if(testBit(trigger_flag, 3) != 0):
                 # Stop Record (bit 3)
                 trigger_flag = clearBit(trigger_flag, 3)
-                logging.info(f"   Stop Recording Triggered: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}") 
+                logging.info(f"O  Stop Recording Thread Triggered : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}") 
                 trigger_flag = clearBit(trigger_flag, 0)
                 while testBit(process_flag, 0) != 0:
                     time.sleep(1)
                 record_thread.join()
-                logging.info(f"   Stop Recording Completed: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"O  Stop Recording Thread Completed : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoprecord")
                 record_thread = threading.Thread(target = picamstartrecord, name = 'record_thread')
 
             if(testBit(trigger_flag, 4) != 0):
                 # Stop Stream (bit 4)
                 trigger_flag = clearBit(trigger_flag, 4)
-                logging.info(f"   Stop Streaming Triggered: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"P  Stop Streaming Thread Triggered : {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 trigger_flag = clearBit(trigger_flag, 1)
                 while testBit(process_flag, 1) != 0:
                     time.sleep(1)
-                logging.info(f"   Stop Streaming Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"P  Stop Streaming Thread Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 playsound("stopstream")
                 stream_thread = threading.Thread(target = picamstartstream, name = 'stream_thread')   
 
             if(testBit(trigger_flag, 5) != 0):
                 # Stop TimeLapse (bit 5)
                 trigger_flag = clearBit(trigger_flag, 5)
-                logging.info(f"   Stop TimeLapse Triggered: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
+                logging.info(f"Q  Stop TimeLapse Thread Triggered : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")  
                 trigger_flag = clearBit(trigger_flag, 2) 
                 while testBit(process_flag, 2) != 0:
                     time.sleep(1)                
                 tlapse_thread.join()
-                logging.info(f"   Stop TimeLapse Completed: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                logging.info(f"Q  Stop TimeLapse Thread Completed : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoptlapse")
                 tlapse_thread = threading.Thread(target = picamstarttlapse, name = 'tlapse_thread')
 
@@ -816,31 +809,31 @@ if __name__ == "__main__":
                     # Start Record (bit 0)
                     record_thread.start()
                     process_flag = setBit(process_flag, 0)
-                    logging.info(f"   Start Recording: {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"R  Start Recording Thread : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 1) != 0):
                     # Start Stream (bit 1)
                     stream_thread.start()
                     process_flag = setBit(process_flag, 1)
-                    logging.info(f"   Start Streaming: {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"S  Start Streaming Thread : {stream_thread},  {stream_thread.is_alive()}, {threading.active_count()}")
 
                 if(testBit(trigger_flag, 2) != 0):
                     # Start TimeLapse (bit 2)
                     tlapse_thread.start()
                     process_flag = setBit(process_flag, 2)
-                    logging.info(f"   Start TimeLapse: {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
+                    logging.info(f"T  Start TimeLapse Thread : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
             else:
                 open_shutter()
 
             if(testBit(trigger_flag, 7) != 0):
                 # Exit Script (bit 7)
-                logging.info("Force Quit Script Instruction ")
+                logging.info("Z  Force Quit Script Instruction ")
                 silentremove(WATCHPATH + "/pi-stopscript")
                 os._exit(1)
             
             if(testBit(trigger_flag, 8) != 0):
                 # Reboot Device (bit 8)
-                logging.info("Force Reboot Instruction ")
+                logging.info("B  Force Reboot Instruction ")
                 playsound("reboot")
                 silentremove(WATCHPATH + "/pi-reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
