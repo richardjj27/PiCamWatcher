@@ -16,8 +16,6 @@
 #  Add an IFTTT option.
 #  Maybe we need a 'stop' when space runs out and there are no other options (i.e. the archive filling up?)
 #  Paths in ini file shouldn't be forced to lowercase
-#  The initial convert of a record seems a bit early.
-# Start recording a bit faster.  Seems to take about 1 minute to get going.
 
 # Done:
 #* Put some file rotation login in
@@ -140,7 +138,6 @@ process_flag = int('000000000000', 2)
 # image         8   I
 # reboot        9   B
 # exit          10  Z
-#    
 
 # VIDEOPATH = "/media/usb/video"
 # IMAGEPATH = "/media/usb/picamsync/image"
@@ -450,14 +447,14 @@ def on_deleted(event):
 
 def silentremove(filename, message = ""):
     try:
-        logging.info(f"D  Delete: {filename}{message}")
+        logging.info(f"d  Delete : {filename}{message}")
         os.remove(filename)
     except:
         pass
 
 def silentmove(filename, destination, message = ""):
     #try:
-    logging.info(f"A  Archive: {filename}{message}")
+    logging.info(f"d  Archive : {filename}{message}")
     os.system("mv " + filename + " " + destination + ">/dev/null 2>&1")
         #shutil.move(filename, destination)
     #except:
@@ -471,15 +468,15 @@ def silentremoveexcept(keeppath, keepfilename):
 def createfolder(foldername):
     try:
         os.makedirs(foldername)
-        logging.info(f"   Create Folder: {foldername}")
+        logging.info(f"   Create Folder : {foldername}")
     except:
         pass
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"=Start Sound: {event}")
+        logging.debug(f"=  Start Sound : {event}")
         os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
-        logging.debug(f"=Finish Sound: {event}")
+        #logging.debug(f"=Finish Sound : {event}")
 
 def open_shutter():
     if(SHUTTEREXISTS == 'true') and ((int(time.time()) % 25) == 3):
@@ -493,7 +490,7 @@ def close_shutter():
 
 def converttomp4(filename):
     convertstring = "ffmpeg -r " + str(FRAMEPS) + " -i " + VIDEOPATH + "/" + filename + ".h264 -vcodec copy " + VIDEOPATH + "/" + filename + ".mp4"
-    logging.info(f"Converting: {filename} to MP4")
+    logging.info(f"c  Converting : {filename}.h264 to mp4")
     os.system(convertstring + " >/dev/null 2>&1")
     if(MEDIAFORMAT == "mp4"):
         silentremove(VIDEOPATH + "/" + filename + ".h264", " (converted)")
@@ -507,8 +504,10 @@ def picamstartrecord():
     timelapsedelta = 0
 
     #logging.info("1")
-
+    print("x")
     camera = PiCamera()
+    print("y")
+    print(camera)
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
     camera.brightness = BRIGHTNESS
@@ -653,7 +652,7 @@ if __name__ == "__main__":
     signal(SIGINT, handler)
 
     # Setup logging (quiet background)
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)-20s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', filename=LOGPATH + "/picamwatcher.log", filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)-20s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S', filename=LOGPATH + '/pcw-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '.log', filemode='w')
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)-20s %(levelname)-8s %(message)s", "%Y-%m-%d %H:%M:%S")
