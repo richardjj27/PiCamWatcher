@@ -104,11 +104,13 @@ global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATIO
 global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
 global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT, MEDIAFORMAT
 global SHUTTEREXISTS
+global EVENTTIME
 global trigger_flag
 global process_flag
 
 trigger_flag = int('000000000000', 2)
 process_flag = int('000000000000', 2)
+EVENTTIME = int(time.time())
 
 # trigger_flag  9876543210
 # PI-RECORD     0000000001
@@ -285,6 +287,8 @@ def logsystemstatus():
     logging.debug(f"#  RECORDTHREAD     {record_thread}")
     logging.debug(f"#  STREAMTHREAD     {stream_thread}")
     logging.debug(f"#  TLAPSETHREAD     {tlapse_thread}")
+    logging.debug(f"#  IDLE TIME        {(int(time.time()) - EVENTTIME)} seconds")
+
     #logging.debug("========================================================================================")
 
 def cleanoldfiles():
@@ -499,16 +503,14 @@ def picamstartrecord():
     global trigger_flag
     global process_flag
     global record_thread
+    global EVENTTIME
 
     playsound("record")
-    time.sleep(1)
+    time.sleep(2)
     timelapsedelta = 0
 
     #logging.info("1")
-    print("x")
     camera = PiCamera()
-    print("y")
-    print(camera)
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
     camera.rotation = ROTATION
     camera.brightness = BRIGHTNESS
@@ -533,21 +535,24 @@ def picamstartrecord():
         #logging.info("3")
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
-        camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         logging.info(f"V+ Start Recording Video : {VIDEOPATH}/{outputfilename}.h264")
+        camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
+        time.sleep(2)
+
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             
             #logging.info("4")
             if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if(TAKESNAPSHOT == 'true'):
-                time.sleep(1)
                 # Take a snapshot jpg every {SNAPSHOTINTERVAL} seconds
                 if(int((time.time() + 5) / SNAPSHOTINTERVAL) > timelapsedelta):
                     logging.info(f"I  Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
                     playsound("image")
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
-                    timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))
+                    timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))        
+            EVENTTIME = int(time.time())
+            time.sleep(1)
         camera.stop_recording()
         logging.info(f"V- Stop Recording Video : {VIDEOPATH}/{outputfilename}.h264")
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
@@ -566,9 +571,10 @@ def picamstartstream():
     global trigger_flag
     global process_flag
     global stream_thread
+    global EVENTTIME
     
     playsound("stream")
-    time.sleep(1)
+    time.sleep(2)
 
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
@@ -592,7 +598,8 @@ def picamstartstream():
             while (testBit(trigger_flag, 1) != 0):
                 if(TIMESTAMP == 'true'):
                     camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                time.sleep(2)
+                EVENTTIME = int(time.time())
+                time.sleep(.5)
             server.shutdown()
             time.sleep(2)
             #logging.info("Stop Streaming")
@@ -615,9 +622,10 @@ def picamstarttlapse():
     global trigger_flag
     global process_flag
     global tlapse_thread
+    global EVENTTIME
 
     playsound("tlapse")
-    time.sleep(1)
+    time.sleep(2)
 
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
@@ -640,7 +648,8 @@ def picamstarttlapse():
         playsound("image")
         camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
         while (testBit(trigger_flag, 2) != 0) and (int(time.time() / TIMELAPSEINTERVAL) <= filetime):
-            time.sleep(.5)
+            time.sleep(1)
+        EVENTTIME = int(time.time())
     camera.close()
     process_flag = clearBit(process_flag, 2)
     time.sleep(1)
@@ -698,7 +707,7 @@ if __name__ == "__main__":
 
     SHUTTEREXISTS = read_config(CONFIG_FILE,"MISC", "SHUTTEREXISTS", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     PLAYSOUND = read_config(CONFIG_FILE,"MISC", "PLAYSOUND", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
-    
+
     playsound("start")
     time.sleep(1)
 
@@ -770,6 +779,7 @@ if __name__ == "__main__":
                 record_thread.join()
                 logging.info(f"O  Stop Recording Thread Completed : {record_thread}, {record_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoprecord")
+                time.sleep(2)
                 record_thread = threading.Thread(target = picamstartrecord, name = 'record_thread')
 
             if(testBit(trigger_flag, 4) != 0):
@@ -781,6 +791,7 @@ if __name__ == "__main__":
                     time.sleep(1)
                 logging.info(f"P  Stop Streaming Thread Completed: {stream_thread}, {stream_thread.is_alive()}, {threading.active_count()}")
                 playsound("stopstream")
+                time.sleep(2)
                 stream_thread = threading.Thread(target = picamstartstream, name = 'stream_thread')   
 
             if(testBit(trigger_flag, 5) != 0):
@@ -793,6 +804,7 @@ if __name__ == "__main__":
                 tlapse_thread.join()
                 logging.info(f"Q  Stop TimeLapse Thread Completed : {tlapse_thread}, {tlapse_thread.is_alive()}, {threading.active_count()}")
                 playsound("stoptlapse")
+                time.sleep(2)
                 tlapse_thread = threading.Thread(target = picamstarttlapse, name = 'tlapse_thread')
 
             if(testBit(trigger_flag, 6) != 0):
@@ -808,7 +820,8 @@ if __name__ == "__main__":
                 
                 if((int(time.time()) % 10) == 5):
                     logging.debug(f"   Waiting for something to do.")
-          
+                    EVENTTIME = int(time.time())
+
                 if(testBit(trigger_flag, 0) != 0):
                     # Start Record (bit 0)
                     record_thread.start()
@@ -840,6 +853,12 @@ if __name__ == "__main__":
                 logging.info("B  Force Reboot Instruction ")
                 playsound("reboot")
                 silentremove(WATCHPATH + "/pi-reboot")
+                os.system("sudo reboot now >/dev/null 2>&1")    
+
+            #logging.error(f"B  Application Idle Time ({(int(time.time()) - EVENTTIME)} seconds)")
+            if((int(time.time()) - EVENTTIME) >= 30):
+                logging.error(f"B  Application Failure Reboot ({(int(time.time()) - EVENTTIME)} seconds)")
+                playsound("reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
 
             time.sleep(1)
