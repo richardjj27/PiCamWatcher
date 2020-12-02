@@ -474,7 +474,7 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"=  Start Sound : {event}")
+        logging.debug(f"=  Start Sound : {event}.mp3")
         os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
         #logging.debug(f"=Finish Sound : {event}")
 
@@ -501,6 +501,7 @@ def picamstartrecord():
     global record_thread
 
     playsound("record")
+    time.sleep(1)
     timelapsedelta = 0
 
     #logging.info("1")
@@ -533,14 +534,14 @@ def picamstartrecord():
         outputfilename = datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S')
         playsound("video")
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
-        logging.info(f"V  Start Recording Video : {VIDEOPATH}/{outputfilename}.h264")
+        logging.info(f"V+ Start Recording Video : {VIDEOPATH}/{outputfilename}.h264")
         while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
             
             #logging.info("4")
             if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if(TAKESNAPSHOT == 'true'):
-                time.sleep(.5)
+                time.sleep(1)
                 # Take a snapshot jpg every {SNAPSHOTINTERVAL} seconds
                 if(int((time.time() + 5) / SNAPSHOTINTERVAL) > timelapsedelta):
                     logging.info(f"I  Take Snapshot Image : {IMAGEPATH + '/' + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg'}")
@@ -548,6 +549,7 @@ def picamstartrecord():
                     camera.capture(IMAGEPATH + "/" + datetime.now().strftime(videoprefix + '%Y%m%d-%H%M%S') + '.jpg')
                     timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))
         camera.stop_recording()
+        logging.info(f"V- Stop Recording Video : {VIDEOPATH}/{outputfilename}.h264")
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
             convert_thread = threading.Thread(target=converttomp4, args=(outputfilename,), name = 'convert_thread', daemon = True)
             convert_thread.start()
@@ -566,6 +568,7 @@ def picamstartstream():
     global stream_thread
     
     playsound("stream")
+    time.sleep(1)
 
     with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
         global output
@@ -614,6 +617,7 @@ def picamstarttlapse():
     global tlapse_thread
 
     playsound("tlapse")
+    time.sleep(1)
 
     camera = PiCamera()
     camera.resolution = (RESOLUTIONX, RESOLUTIONY)
@@ -696,6 +700,7 @@ if __name__ == "__main__":
     PLAYSOUND = read_config(CONFIG_FILE,"MISC", "PLAYSOUND", "(?:^|(?<= ))(true|false)(?:(?= )|$)", "true") # True|False
     
     playsound("start")
+    time.sleep(1)
 
     # Create file system watcher.
     my_event_handler = PatternMatchingEventHandler(patterns=['*pi-*'], ignore_patterns=[], ignore_directories=True, case_sensitive=True)
