@@ -478,7 +478,7 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"=  Start Sound : {event}.mp3")
+        logging.debug(f"   Start Sound : {event}.mp3")
         os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
         #logging.debug(f"=Finish Sound : {event}")
 
@@ -816,11 +816,11 @@ if __name__ == "__main__":
             # Make sure nothing is running
             if(testBit(process_flag, 0) + testBit(process_flag, 1) + testBit(process_flag, 2) == 0):
                 # Make sure nothing is running
+                EVENTTIME = int(time.time())
                 close_shutter()
                 
-                if((int(time.time()) % 10) == 5):
+                if((int(time.time()) % 30) == 5):
                     logging.debug(f"   Waiting for something to do.")
-                    EVENTTIME = int(time.time())
 
                 if(testBit(trigger_flag, 0) != 0):
                     # Start Record (bit 0)
