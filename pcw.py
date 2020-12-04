@@ -104,13 +104,14 @@ global RESOLUTIONX, RESOLUTIONY, BRIGHTNESS, CONTRAST, AWBMODE, FRAMEPS, ROTATIO
 global VIDEOINTERVAL, TIMELAPSEINTERVAL, STREAMPORT, TIMESTAMP
 global VIDEOPATHFSLIMIT, IMAGEPATHLIMIT, IMAGEARCHIVEPATHLIMIT, TAKESNAPSHOT, MEDIAFORMAT
 global SHUTTEREXISTS
-global EVENTTIME
+global EVENTTIME, UPTIME
 global trigger_flag
 global process_flag
 
 trigger_flag = int('000000000000', 2)
 process_flag = int('000000000000', 2)
 EVENTTIME = int(time.time())
+UPTIME = int(time.time())
 
 # trigger_flag  9876543210
 # PI-RECORD     0000000001
@@ -139,7 +140,7 @@ EVENTTIME = int(time.time())
 # video         7   V
 # image         8   I
 # reboot        9   B
-# exit          10  Z
+# exit          10  X
 
 # VIDEOPATH = "/media/usb/video"
 # IMAGEPATH = "/media/usb/picamsync/image"
@@ -288,6 +289,7 @@ def logsystemstatus():
     logging.debug(f"#  STREAMTHREAD     {stream_thread}")
     logging.debug(f"#  TLAPSETHREAD     {tlapse_thread}")
     logging.debug(f"#  IDLE TIME        {(int(time.time()) - EVENTTIME)} seconds")
+    logging.debug(f"#  UPTIME           {(int(time.time()) - UPTIME)} seconds")
 
     #logging.debug("========================================================================================")
 
@@ -478,7 +480,7 @@ def createfolder(foldername):
 
 def playsound(event):
     if(PLAYSOUND == 'true'):
-        logging.debug(f"   Start Sound : {event}.mp3")
+        logging.debug(f"   Play Audio Alert : {event}.mp3")
         os.system("(mpg321 -g 15 " + AUDIOPATH + "/" + event + ".mp3&>/dev/null &) >/dev/null 2>&1")
         #logging.debug(f"=Finish Sound : {event}")
 
@@ -539,8 +541,7 @@ def picamstartrecord():
         camera.start_recording(VIDEOPATH + "/" + outputfilename + '.h264', format='h264', quality=QUALITY)
         time.sleep(2)
 
-        while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):
-            
+        while (testBit(trigger_flag, 0) != 0) and (int(time.time() / (VIDEOINTERVAL * 60)) <= filetime):            
             #logging.info("4")
             if(TIMESTAMP == 'true'):
                 camera.annotate_text = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -553,6 +554,7 @@ def picamstartrecord():
                     timelapsedelta = (int((time.time() + 5) / SNAPSHOTINTERVAL))        
             EVENTTIME = int(time.time())
             time.sleep(1)
+            
         camera.stop_recording()
         logging.info(f"V- Stop Recording Video : {VIDEOPATH}/{outputfilename}.h264")
         if(MEDIAFORMAT == "mp4" or MEDIAFORMAT == "both"):
@@ -857,7 +859,7 @@ if __name__ == "__main__":
 
             #logging.error(f"B  Application Idle Time ({(int(time.time()) - EVENTTIME)} seconds)")
             if((int(time.time()) - EVENTTIME) >= 30):
-                logging.error(f"B  Application Failure Reboot ({(int(time.time()) - EVENTTIME)} seconds)")
+                logging.error(f"B  Application Failure Reboot ({(int(time.time()) - UPTIME)} seconds)")
                 playsound("reboot")
                 os.system("sudo reboot now >/dev/null 2>&1")    
 
